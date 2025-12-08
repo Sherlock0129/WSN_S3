@@ -1,0 +1,88 @@
+"""
+Main simulation loop for the Hierarchical WPT System.
+"""
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+import numpy as np
+
+from src.network.WSN import WSN
+from src.routing import routing_algorithm
+from src.scheduling import scheduler
+from src.utils import mrc_model
+from src.config.simulation_config import SimConfig, SensorNodeConfig
+from src.viz.plot_results import plot_energy_history
+
+def run_simulation():
+    """
+    Initializes and runs the main simulation loop.
+    """
+    # 1. Initialize the WSN
+    wsn = WSN()
+    
+    # Data storage for results
+    # We'll store the energy level of each node at each time step
+    all_nodes = wsn.get_all_nodes()
+    node_ids = [node.node_id for node in all_nodes]
+    num_steps = int(SimConfig.SIMULATION_TIME_S / SimConfig.TIME_STEP_S)
+    energy_history = {node_id: np.zeros(num_steps) for node_id in node_ids}
+
+    print("\nStarting simulation...")
+    # 2. Main simulation loop
+    for t_step in range(num_steps):
+        current_time = t_step * SimConfig.TIME_STEP_S
+
+        # a. Get scheduling decision
+        actions = scheduler.schedule_power_transfer(wsn)
+        rf_target_ch = actions['rf_target']
+        mrc_transmitting_chs = actions['mrc_transmitters']
+
+        # b. Perform long-range RF power transfer
+        if rf_target_ch:
+            best_path, max_power_w = routing_algorithm.find_optimal_energy_path(wsn, rf_target_ch)
+            
+            if max_power_w > 0:
+                # c. Update target CH energy
+                rf_target_ch.receive_rf_power(max_power_w, SimConfig.TIME_STEP_S)
+                # print(f"Time {current_time}s: Charging {rf_target_ch.node_id} with {max_power_w:.6f}W via {best_path}")
+
+        # d. Perform local MRC power transfer
+        for ch in mrc_transmitting_chs:
+            # The CH transmits power to its own sensor nodes
+            target_nodes = [c.sensor_nodes for c in wsn.clusters if c.cluster_head == ch][0]
+            ch.transmit_mrc_power(target_nodes, SimConfig.TIME_STEP_S, mrc_model)
+
+        # e. Update energy for all nodes due to idle consumption
+        for node in all_nodes:
+            idle_consumption = SensorNodeConfig.IDLE_POWER_W * SimConfig.TIME_STEP_S
+            node.current_energy -= idle_consumption
+            # Ensure energy doesn't go below zero
+            node.current_energy = max(0, node.current_energy)
+
+        # f. Record energy levels
+        for i, node in enumerate(all_nodes):
+            energy_history[node.node_id][t_step] = node.current_energy
+            # Check if a node has died
+            if node.current_energy < SensorNodeConfig.MIN_ENERGY_J:
+                print(f"!!! Node {node.node_id} has died at {current_time}s !!!")
+                # For now, we just print. We could also stop the simulation.
+
+        # Print progress
+        if (t_step + 1) % 100 == 0:
+            print(f"... Step {t_step + 1}/{num_steps} completed.")
+
+    print("Simulation finished.")
+    return energy_history, node_ids
+
+if __name__ == "__main__":
+    energy_data, node_ids = run_simulation()
+    
+    # Print final energy status
+    print("\n--- Final Energy Status ---")
+    for node_id in node_ids:
+        final_energy = energy_data[node_id][-1]
+        print(f"Node {node_id}: {final_energy:.4f} J")
+
+    # 4. Plot the results (if enabled)
+    if SimConfig.ENABLE_PLOT_RESULTS:
+        plot_energy_history(energy_data, node_ids)
+

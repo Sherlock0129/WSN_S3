@@ -1,0 +1,16 @@
+\section{实验设计与结果}\label{sec:experiments}
+\textbf{场景。} 在山地/遮挡地形中布设多块 RIS 与多个簇：RF 能量源位于向阳坡，簇位于背阴坡；MRC 线圈存在偏移与倾斜。业务与能量负载模拟典型 WSN 采样占空。
+
+\textbf{基线。} (i) 无 RIS 的 RF 输能；(ii) 单 RIS 路由；(iii) 无 RIS 透镜的 MRC；(iv) 不含 AOEI 的 SWIPT 调度；(v) 传统机会路由。
+
+\textbf{指标。} 寿命（首节点失效）、能量均衡（CV）、AOEI 平均/尾部、接收 RF/MRC 功率与端到端效率、控制开销。
+
+\textbf{对比与消融。}
+\begin{itemize}[leftmargin=*]
+  \item 多 RIS 数量/位置对 RF 路由增益的影响。
+  \item RIS 透镜对 MRC 效率与抗偏移性的提升。
+  \item AOEI+ALDP+EETOR 联合方案对比逐项消融。
+  \item 扩展性：增加簇或 RIS（含移动/UAV RIS）。
+\end{itemize}
+
+\textbf{主要结果。} 在总能耗相近的情况下，联合方案的寿命-均衡综合指标较基线提升约 194\%；AOEI 降低信息陈旧度；RIS 透镜改善偏移下的 MRC；多 RIS 在 NLOS 场景显著抬升接收功率。

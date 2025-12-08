@@ -1,0 +1,100 @@
+\documentclass[journal]{IEEEtran}
+
+% *** MISC UTILITY PACKAGES ***
+\ifCLASSINFOpdf
+  \usepackage[pdftex]{graphicx}
+  \graphicspath{{sections/figures/}}
+  \DeclareGraphicsExtensions{.pdf,.jpeg,.png}
+\else
+  \usepackage[dvips]{graphicx}
+  \graphicspath{{sections/figures/}}
+  \DeclareGraphicsExtensions{.eps}
+\fi
+
+% *** MATH PACKAGES ***
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+
+% *** SPECIALIZED LIST PACKAGES ***
+\usepackage{enumitem}
+
+% *** ALIGNMENT PACKAGES ***
+\usepackage{array}
+\usepackage{booktabs}  % 三线表支持
+\usepackage{multirow}  % 跨行表格支持
+\usepackage{makecell}  % 表格单元格换行
+
+% *** SUBFIGURE PACKAGES ***
+\usepackage[caption=false,font=footnotesize]{subfig}
+
+% *** FLOAT PACKAGES ***
+\usepackage{stfloats}
+
+% *** PDF, URL AND HYPERLINK PACKAGES ***
+\usepackage{url}
+\usepackage{hyperref}
+
+% *** CHINESE SUPPORT ***
+\usepackage[UTF8]{ctex}
+
+% *** ADDITIONAL PACKAGES ***
+\usepackage{siunitx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usetikzlibrary{shapes.geometric, arrows}
+\usepackage{mdframed}  % 可分页的背景框
+
+% correct bad hyphenation here
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+\begin{document}
+
+\title{基于可重构智能表面的可扩展分层无线输能系统：面向非视距（NLOS）场景下的WSN的能量传输解决方案}
+
+\author{作者姓名~\IEEEmembership{Member,~IEEE,}
+        和~合作者姓名~\IEEEmembership{Member,~IEEE}%
+\thanks{通信作者单位与邮箱。}%
+\thanks{其他作者单位与邮箱。}%
+\thanks{稿件收到与修订日期。}}
+
+% The paper headers
+\markboth{IEEE Transactions on XXX,~Vol.~XX, No.~X, Month~YYYY}%
+{Shell \MakeLowercase{\textit{et al.}}: Information--Energy Dual System for Energy Sharing in WSN}
+
+\maketitle
+
+\begin{abstract}
+大规模无线传感网（WSN）在山地、森林、工业等复杂环境中面临可持续供能难题：遮挡导致太阳能不稳定，NLOS 场景使射频无线输能（RF WPT）路径损耗严重，磁共振耦合（MRC）对线圈偏移高度敏感。本文提出基于可重构智能表面（RIS）的可扩展分层混合输能体系：全局层利用多块 RIS 形成可控多跳反射功率通路，实现跨障碍远距离 RF 供能；簇内层以可编程超表面作为近场能量透镜，提升 MRC 耦合效率和抗偏移能力；网络层构建统一的 RF--RIS--MRC--WSN 能量流模型以协同端到端输能。体系兼具可扩展性（支持大规模 WSN 拓展）与可扩充性（可接入无人机/机器人挂载 RIS 与未来 6G IoE 能源基础设施），结合理论建模、电磁仿真、原型实现与系统验证，面向工程落地。
+\end{abstract}
+
+\begin{IEEEkeywords}
+无线传感网，RIS，多跳射频无线输能，磁共振耦合
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+% ========== 各章节通过 \input 引用 ==========
+\input{sections/01_introduction}
+\input{sections/02_related_work}
+\input{sections/03_modeling}
+\input{sections/04_mechanism_design}
+\input{sections/05_experiments}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+% ========== 参考文献 ==========
+\input{sections/bibliography}
+
+% ========== Biographies ==========
+\begin{IEEEbiographynophoto}{作者姓名}
+作者简介。
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{合作者姓名}
+作者简介。
+\end{IEEEbiographynophoto}
+
+\end{document}
+

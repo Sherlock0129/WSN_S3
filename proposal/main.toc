@@ -1,0 +1,19 @@
+\contentsline {section}{\numberline {1}Background and Significance}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Background}{2}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Significance}{3}{subsection.1.2}%
+\contentsline {section}{\numberline {2}Related Work and Limitations}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}RIS-assisted RF Wireless Power Transfer}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Metasurface-enhanced Magnetic Resonant Coupling}{4}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Energy Management in WSNs}{4}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Gaps Addressed by This Project}{5}{subsection.2.4}%
+\contentsline {section}{\numberline {3}Key Scientific Problem}{5}{section.3}%
+\contentsline {section}{\numberline {4}Technical Route and Methodology}{6}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Overall Technical Route}{6}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Multi-RIS RF Energy Routing}{7}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}RIS-enhanced MRC Energy Lens}{7}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Cross-layer Energy Flow Coordination}{7}{subsection.4.4}%
+\contentsline {section}{\numberline {5}Experimental Design and Validation Metrics}{8}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Experiment 1: Multi-RIS RF Power Routing}{8}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Experiment 2: RIS-enhanced MRC Power Transfer}{8}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Experiment 3: Hierarchical WPT + WSN Performance}{9}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Experiment 4: System Scalability and Extensibility}{9}{subsection.5.4}%
