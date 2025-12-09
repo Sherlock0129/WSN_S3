@@ -9,16 +9,18 @@ from src.core.SensorNode import SensorNode
 from src.config.simulation_config import WSNConfig, SensorNodeConfig
 
 class Cluster:
-    def __init__(self, cluster_id, center_position):
+    def __init__(self, cluster_id, center_position, has_solar_nodes: bool = False):
         """
         Initializes a single WSN cluster.
 
         Args:
             cluster_id (int): Unique ID for the cluster.
             center_position (np.array): 3D coordinates for the cluster's center.
+            has_solar_nodes (bool): Whether sensor nodes in this cluster harvest solar energy.
         """
         self.cluster_id = cluster_id
         self.center_position = center_position
+        self.has_solar_nodes = has_solar_nodes
         
         # Create the cluster head
         self.cluster_head = ClusterHead(node_id=f"CH_{cluster_id}", position=center_position)
@@ -44,10 +46,10 @@ class Cluster:
                 position=node_position,
                 low_threshold=0.1, # Example
                 high_threshold=0.9, # Example
-                has_solar=False # Rely on WPT
+                has_solar=self.has_solar_nodes
             )
             self.sensor_nodes.append(node)
             
     def __repr__(self):
-        return f"Cluster(ID={self.cluster_id}, CH={self.cluster_head.node_id}, Nodes={len(self.sensor_nodes)})"
+        return f"Cluster(ID={self.cluster_id}, CH={self.cluster_head.node_id}, Nodes={len(self.sensor_nodes)}, SolarNodes={self.has_solar_nodes})"
 

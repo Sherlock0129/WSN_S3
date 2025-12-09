@@ -2,6 +2,9 @@ import math
 
 import numpy as np
 
+# 引入仿真配置，用于能量采集/衰减基于时间步长与空闲功耗
+from src.config.simulation_config import SimConfig, SensorNodeConfig
+
 
 class SensorNode:
     def __init__(self,
@@ -16,17 +19,17 @@ class SensorNode:
                  voltage: float = 3.7,
                  # 太阳能参数
                  enable_energy_harvesting: bool = True,
-                 solar_efficiency: float = 0.2,
-                 solar_area: float = 0.1,
-                 max_solar_irradiance: float = 1500.0,
-                 env_correction_factor: float = 1.0,
+                 solar_efficiency: float = 0.18,
+                 solar_area: float = 0.001,
+                 max_solar_irradiance: float = 800.0,
+                 env_correction_factor: float = 0.6,
                  # 传输参数
                  energy_char: float = 1000.0,
                  energy_elec: float = 1e-4,
                  epsilon_amp: float = 1e-5,
                  bit_rate: float = 1000000.0,
                  path_loss_exponent: float = 2.0,
-                 energy_decay_rate: float = 5.0,
+                 energy_decay_rate: float = 0.0,
                  sensor_energy: float = 0.1,
                  # 移动性参数
                  is_mobile: bool = False,
@@ -162,21 +165,23 @@ class SensorNode:
         :return: The energy harvested in Joules during the current time step.
         """
         if not self.has_solar or not self.enable_energy_harvesting:
-            return 0  # If the node doesn't have a solar panel or energy harvesting is disabled, no energy is harvested.
-        G_t = self.solar_irradiance(t)  # Get solar irradiance at time t
-        delta_t = 60  # Energy harvested per minute (in Joules)
-        harvested_energy = self.solar_efficiency * self.solar_area * G_t * self.env_correction_factor
+            return 0.0
+        # Irradiance at time t (W/m^2)
+        G_t = self.solar_irradiance(t)
+        # Harvested power (W)
+        power_w = self.solar_efficiency * self.solar_area * G_t * self.env_correction_factor
+        # Convert to energy for the current simulation time step (J)
+        harvested_energy = power_w * SimConfig.TIME_STEP_S
         return harvested_energy
 
     def energy_decay(self):
         """
-        Calculate the energy decay of the node's battery over time.
+        Calculate the energy decay of the node's battery over one simulation step.
+        Uses idle power model: E_idle = P_idle * dt.
 
         :return: The decayed energy (in Joules).
         """
-        # beta = 0.001  # Energy decay rate (per unit energy)
-        # decay_energy = beta * self.current_energy
-        decay_energy = 5  # Fixed decay energy per time step (in Joules)
+        decay_energy = SensorNodeConfig.IDLE_POWER_W * SimConfig.TIME_STEP_S
         return decay_energy
 
     def energy_generation(self, t, receive_WET=0):

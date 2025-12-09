@@ -78,21 +78,27 @@ class RISConfig:
 # ==============================================================================
 class WSNConfig:
     # 功能开关
-    ENABLE_SOLAR = True             # 是否启用节点太阳能收集
+    ENABLE_SOLAR = True             # 是否启用节点太阳能收集（全局开关，具体到簇由下方列表控制）
     ENABLE_MRC_LOCAL_TRANSFER = True # 是否启用簇内 MRC 能量下发
-    # 簇的数量 (湖泊)
+    # 簇的数量 (保留字段，实际按下方坐标列表数量创建)
     NUM_CLUSTERS = 6
     # 每个簇中的传感器节点数量
     NODES_PER_CLUSTER = 10
-    # 簇头位置 (根据地图估算)，代表每个湖泊的中心
-    CLUSTER_HEAD_POSITIONS = [
-        np.array([1200, 1300, 287]), # 湖泊1
-        np.array([1300, 500, 497]),  # 湖泊2
-        np.array([2800, 450, 657]),  # 湖泊3 (Lough Cummeennageasta)
-        np.array([2500, 1100, 536]), # 湖泊4
-        np.array([3200, 1200, 331]), # 湖泊5 (Lough Callee)
-        np.array([3700, 1300, 343]), # 湖泊6 (Lough Gouragh)
+
+    # 将簇按“是否采集太阳能”分为两类，分别维护坐标列表
+    SOLAR_CLUSTER_HEAD_POSITIONS = [
+        np.array([1200, 1300, 287]), # 湖泊1（示例：设为太阳能簇）
+        np.array([1300, 500, 497]),  # 湖泊2（示例：非太阳能簇）
+        
     ]
+    NON_SOLAR_CLUSTER_HEAD_POSITIONS = [
+        
+        np.array([2800, 450, 657]),  # 湖泊3（示例：非太阳能簇）
+        np.array([3200, 1200, 331]), # 湖泊5（示例：非太阳能簇）
+        np.array([2500, 1100, 536]), # 湖泊4（示例：设为太阳能簇）
+        np.array([3700, 1300, 343]), # 湖泊6（示例：设为太阳能簇）
+    ]
+
     # 每个簇的半径 (节点部署在簇头周围的这个半径内)
     CLUSTER_RADIUS = 50  # 单位：米
 
@@ -101,7 +107,7 @@ class WSNConfig:
 # ==============================================================================
 class SensorNodeConfig:
     # 初始能量 (单位：焦耳)
-    INITIAL_ENERGY_J = 0.05
+    INITIAL_ENERGY_J = 0.5
     # 最低工作能量水平 (单位：焦耳)
     MIN_ENERGY_J = 0.001
     # 传感能耗 (单位：焦耳/样本)

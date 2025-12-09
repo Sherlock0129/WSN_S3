@@ -10,7 +10,7 @@ from src.routing import routing_algorithm
 from src.scheduling import scheduler
 from src.utils import mrc_model
 from src.utils.simulation_logger import SimulationLogger
-from src.config.simulation_config import SimConfig, SensorNodeConfig
+from src.config.simulation_config import SimConfig, SensorNodeConfig, WSNConfig
 from src.viz.plot_results import plot_energy_history
 
 def run_simulation():
@@ -70,12 +70,13 @@ def run_simulation():
         # d. Log energy flow (RF + MRC)
         logger.log_energy_transfer(rf_target_ch, rf_sent_energy_j, rf_delivered_energy_j, mrc_entries)
 
-        # f. Update energy for all nodes due to idle consumption
+        # f. Per-node energy update (solar harvest + idle decay via update_energy)
+        current_time_min = (current_time % (24 * 3600)) / 60.0  # minutes in a day
         for node in all_nodes:
-            idle_consumption = SensorNodeConfig.IDLE_POWER_W * SimConfig.TIME_STEP_S
-            node.current_energy -= idle_consumption
-            # Ensure energy doesn't go below zero
-            node.current_energy = max(0, node.current_energy)
+            # Respect global solar enable: disable harvesting when turned off
+            if hasattr(node, 'enable_energy_harvesting'):
+                node.enable_energy_harvesting = getattr(node, 'has_solar', False) and WSNConfig.ENABLE_SOLAR
+            node.update_energy(current_time_min)
 
         # g. Record energy levels for plotting
         for i, node in enumerate(all_nodes):

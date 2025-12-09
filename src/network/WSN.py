@@ -30,12 +30,22 @@ class WSN:
             ris = RIS(panel_id=i, position=RISConfig.POSITIONS[i])
             self.ris_panels.append(ris)
             
-        # Create the clusters
+        # Create the clusters（按是否采集太阳能分两类创建）
         self.clusters = []
-        for i in range(WSNConfig.NUM_CLUSTERS):
-            cluster = Cluster(cluster_id=i, center_position=WSNConfig.CLUSTER_HEAD_POSITIONS[i])
-            self.clusters.append(cluster)
-            
+        cluster_id = 0
+        # 先创建“太阳能簇”
+        if hasattr(WSNConfig, 'SOLAR_CLUSTER_HEAD_POSITIONS'):
+            for pos in WSNConfig.SOLAR_CLUSTER_HEAD_POSITIONS:
+                cluster = Cluster(cluster_id=cluster_id, center_position=pos, has_solar_nodes=True)
+                self.clusters.append(cluster)
+                cluster_id += 1
+        # 再创建“非太阳能簇”
+        if hasattr(WSNConfig, 'NON_SOLAR_CLUSTER_HEAD_POSITIONS'):
+            for pos in WSNConfig.NON_SOLAR_CLUSTER_HEAD_POSITIONS:
+                cluster = Cluster(cluster_id=cluster_id, center_position=pos, has_solar_nodes=False)
+                self.clusters.append(cluster)
+                cluster_id += 1
+        
         # Adjust node z-coordinates to be on the terrain surface
         self._place_nodes_on_terrain()
         
