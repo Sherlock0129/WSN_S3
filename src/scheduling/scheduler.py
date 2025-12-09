@@ -5,7 +5,7 @@ This module decides which cluster head to charge via the RF-RIS system and
 which cluster heads should perform local MRC power transmission.
 """
 
-from src.config.simulation_config import ClusterHeadConfig
+from src.config.simulation_config import ClusterHeadConfig, WSNConfig
 
 def schedule_power_transfer(wsn):
     """
@@ -43,15 +43,18 @@ def schedule_power_transfer(wsn):
     # 2. Designate it as the RF target
     rf_target = lowest_energy_ch
 
-    # 3. Find cluster heads that should perform local MRC transmission
+    # 3. Find cluster heads that should perform local MRC transmission (guarded by config)
     mrc_transmitters = []
-    # A CH will transmit locally if its energy is above 50% of its initial capacity
-    mrc_threshold = ClusterHeadConfig.INITIAL_ENERGY_J * 0.5 
-
-    for cluster in wsn.clusters:
-        ch = cluster.cluster_head
-        if ch.current_energy > mrc_threshold:
-            mrc_transmitters.append(ch)
+    if WSNConfig.ENABLE_MRC_LOCAL_TRANSFER:
+        # A CH will transmit locally if its energy is above 50% of its initial capacity
+        mrc_threshold = ClusterHeadConfig.INITIAL_ENERGY_J * 0.5
+        for cluster in wsn.clusters:
+            ch = cluster.cluster_head
+            # 避免被远程充电的目标CH在同一步执行MRC
+            if ch is rf_target:
+                continue
+            if ch.current_energy > mrc_threshold:
+                mrc_transmitters.append(ch)
 
     actions = {
         'rf_target': rf_target,

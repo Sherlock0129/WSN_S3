@@ -10,20 +10,19 @@ class SimulationLogger:
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"log_{timestamp}.md"
-
         self.log_file_path = os.path.join(log_dir, filename)
-        # Start with an empty file
-        self.log_file = open(self.log_file_path, "w", encoding="utf-8")
+        
+        # In-memory buffer to store log strings
+        self.log_buffer = []
+        
         self._write_header()
-        self.log_file.close() # Close and reopen in append mode
-        self.log_file = open(self.log_file_path, "a", encoding="utf-8")
 
     def _write_header(self):
-        self.log_file.write("# WSN_S3 Simulation Log\n\n")
-        self.log_file.write("This log details the step-by-step events of the simulation, including scheduling, routing, and energy distribution.\n")
+        self.log_buffer.append("# WSN_S3 Simulation Log\n\n")
+        self.log_buffer.append("This log details the step-by-step events of the simulation, including scheduling, routing, and energy distribution.\n")
 
     def log_step(self, t_step, current_time):
-        self.log_file.write(f"\n---\n\n## Step {t_step} (Time: {current_time:.2f}s)\n\n")
+        self.log_buffer.append(f"\n---\n\n## Step {t_step} (Time: {current_time:.2f}s)\n\n")
 
     def log_scheduling(self, actions):
         rf_target = actions.get('rf_target')
@@ -41,7 +40,7 @@ class SimulationLogger:
         else:
             log_str += "- **MRC Transmitters**: None\n"
             
-        self.log_file.write(log_str)
+        self.log_buffer.append(log_str)
 
     def log_routing(self, path, power):
         log_str = "### 2. Energy Routing\n"
@@ -51,7 +50,7 @@ class SimulationLogger:
             log_str += f"- **Delivered Power**: `{power * 1e6:.2f}` uW\n"
         else:
             log_str += "- **Result**: No viable energy path found or no power transferred.\n"
-        self.log_file.write(log_str)
+        self.log_buffer.append(log_str)
 
     def log_energy_transfer(self, rf_target, max_power_w, mrc_transmitting_chs, time_step):
         log_str = "### 3. Energy & Information Flow\n"
@@ -71,7 +70,7 @@ class SimulationLogger:
         log_str += "- Sensor Nodes -> Cluster Heads: Data packets (e.g., sensor readings).\n"
         log_str += "- Cluster Heads -> Sink: Aggregated data.\n"
 
-        self.log_file.write(log_str)
+        self.log_buffer.append(log_str)
 
     def log_cluster_energy(self, wsn):
         log_str = "### 4. Cluster Energy Status\n"
@@ -83,10 +82,14 @@ class SimulationLogger:
             avg_node_energy = np.mean(node_energies) if node_energies else 0
             total_energy = ch.current_energy + np.sum(node_energies)
             log_str += f"| `{ch.node_id}` | {ch.current_energy:.4f} | {avg_node_energy:.4f} | {total_energy:.4f} |\n"
-        self.log_file.write(log_str)
-        self.log_file.flush()
+        self.log_buffer.append(log_str)
 
     def close(self):
-        self.log_file.write("\n---\n\n**Simulation Finished.**")
-        self.log_file.close()
-
+        """Writes the entire log buffer to the file at once."""
+        self.log_buffer.append("\n---\n\n**Simulation Finished.**")
+        try:
+            with open(self.log_file_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(self.log_buffer))
+            print(f"Simulation log saved to {self.log_file_path}")
+        except IOError as e:
+            print(f"Error writing log file: {e}")

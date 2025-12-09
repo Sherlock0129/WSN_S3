@@ -14,9 +14,9 @@ class EnvConfig:
     AREA_WIDTH = 4000
     AREA_HEIGHT = 2000
     # 功能开关
-    ENABLE_HEIGHTMAP = True   # 是否启用真实高度热力图（需设置 HEIGHTMAP_PATH）
+    ENABLE_HEIGHTMAP = False   # 是否启用真实高度热力图（需设置 HEIGHTMAP_PATH）
     ENABLE_TERRAIN_LOS = True # 是否进行地形遮挡的视距判断
-    ENABLE_TERRAIN_MODEL = True  # 若无需地形，设为 False 完全禁用 DEM
+    ENABLE_TERRAIN_MODEL = False  # 若无需地形，设为 False 完全禁用 DEM
     # 数字高程模型（DEM）地形设置
     TERRAIN_RESOLUTION = 10  # 每个网格点的分辨率（单位：米）
     TERRAIN_MAX_ELEVATION = 1000  # 最大海拔高度（单位：米），以容纳925米的最高RIS
@@ -27,7 +27,7 @@ class EnvConfig:
     HEIGHTMAP_MIN_ELEV = 81   # 热力图最低处对应的海拔（米），可用 Sink 海拔近似
     HEIGHTMAP_MAX_ELEV = 925  # 热力图最高处对应的海拔（米），可用最高 RIS 海拔近似
     # 大气和路径损耗参数
-    PATH_LOSS_EXPONENT = 3.5  # 路径损耗指数，更适用于有障碍物的复杂山地地形
+    PATH_LOSS_EXPONENT = 1.5  # 自由空间近似：路径损耗指数 n=1.5
     REFERENCE_DISTANCE = 1.0  # meters
     REFERENCE_PATH_LOSS = 30.0  # dB
     NLOS_EXTRA_LOSS_DB = 20.0   # 非视距链路额外损耗（dB）
@@ -41,7 +41,7 @@ class SinkConfig:
     # 发射功率（单位：瓦）
     TRANSMIT_POWER_W = 10.0
     # 工作频率（单位：赫兹）
-    FREQUENCY_HZ = 915e6  # 915 MHz ISM 频段
+    FREQUENCY_HZ = 300e6  # 300 MHz（用于灵敏度分析）
     # 天线增益（单位：dBi）
     ANTENNA_GAIN_DBI = 6.0
 

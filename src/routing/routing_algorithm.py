@@ -76,7 +76,7 @@ def find_optimal_energy_path(wsn, target_ch, max_hops=2):
                 # We re-use friis_path_loss for the final hop from the last RIS
                 dist_j_ch = np.linalg.norm(ris_j.position - target_ch.position)
                 if env.check_los(ris_j.position, target_ch.position):
-                    final_power_dbm = rf_propagation_model.friis_path_loss(
+                    final_power_dbm = rf_propagation_model._log_distance_path_loss(
                         ris_j_as_source.get_tx_power_dbm(),
                         ris_j.get_reflection_gain(),
                         target_ch.rf_rx_gain_dbi,
