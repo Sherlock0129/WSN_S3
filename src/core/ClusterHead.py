@@ -32,6 +32,11 @@ class ClusterHead(SensorNode):
         # RF receiver properties for long-range energy harvesting
         self.rf_rx_gain_dbi = ClusterHeadConfig.RF_RX_GAIN_DBI
 
+        # Far-field RF transmitter properties for cross-cluster energy donation
+        self.rf_tx_power_w = ClusterHeadConfig.CH_RF_TX_POWER_W
+        self.frequency_hz = ClusterHeadConfig.CH_RF_TX_FREQUENCY_HZ
+        self.antenna_gain_dbi = ClusterHeadConfig.CH_RF_TX_GAIN_DBI
+
         # MRC transmitter properties for local energy distribution
         self.mrc_tx_power_w = ClusterHeadConfig.MRC_TX_POWER_W
         self.mrc_tx_frequency_hz = ClusterHeadConfig.MRC_TX_FREQUENCY_HZ
@@ -80,6 +85,13 @@ class ClusterHead(SensorNode):
             delivered_total_j += received_power_w * time_step_s
         
         return delivered_total_j, energy_consumed
+
+    def get_tx_power_dbm(self):
+        """
+        Returns the far-field RF transmit power (donor mode) in dBm.
+        """
+        power_mw = self.rf_tx_power_w * 1000.0
+        return 10 * np.log10(max(power_mw, 1e-12))
 
     def __repr__(self):
         return f"ClusterHead(ID={self.node_id}, Energy={self.current_energy:.3f}J)"

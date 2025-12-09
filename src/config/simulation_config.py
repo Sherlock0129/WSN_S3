@@ -124,6 +124,10 @@ class ClusterHeadConfig:
     INITIAL_ENERGY_J = 1.0
     # RF接收天线增益 (单位：dBi)
     RF_RX_GAIN_DBI = 9.0
+    # 远场RF发射能力（用于跨簇供能）
+    CH_RF_TX_POWER_W = 1.0
+    CH_RF_TX_FREQUENCY_HZ = SinkConfig.FREQUENCY_HZ
+    CH_RF_TX_GAIN_DBI = 9.0
     # MRC发射器属性
     MRC_TX_POWER_W = 0.5
     MRC_TX_FREQUENCY_HZ = 13.56e6 # 13.56 MHz 用于近场通信
@@ -139,6 +143,11 @@ class SimConfig:
     ENABLE_LOGGING = True           # 是否打印仿真过程日志
     ENABLE_PLOT_RESULTS = True      # 是否在仿真结束后绘制能量曲线
     ENABLE_SCENE_VIZ = True         # 是否启用场景可视化脚本（单独运行时也可关闭）
+    ENABLE_CROSS_CLUSTER_DONATION = True  # 是否启用跨簇触发式供能（由CH作为源）
+    # 触发式跨簇供能参数
+    CROSS_CLUSTER_TRIGGER_PERIOD_STEPS = 100
+    TRIGGER_LOW_PCT = 0.30
+    TRIGGER_HIGH_PCT = 0.80
     # 总仿真时间 (单位：秒)
     SIMULATION_TIME_S = 3600  # 1小时
     # 时间步长 (单位：秒)

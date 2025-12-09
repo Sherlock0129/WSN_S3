@@ -87,7 +87,7 @@ def calculate_ris_assisted_power(source, ris, target, env):
         tx_power_dbm, 
         source_gain, 
         0, # Isotropic antenna gain for RIS element
-        SinkConfig.FREQUENCY_HZ, 
+        source.frequency_hz,
         dist_source_ris,
         True  # RIS 反射要求 LoS，前面已检查
     )
@@ -108,7 +108,7 @@ def calculate_ris_assisted_power(source, ris, target, env):
         power_at_ris_dbm, 
         ris_gain_dbi, 
         rx_gain, 
-        SinkConfig.FREQUENCY_HZ, 
+        source.frequency_hz, 
         dist_ris_target,
         True  # RIS 反射要求 LoS，前面已检查
     )
