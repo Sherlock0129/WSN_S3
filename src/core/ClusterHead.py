@@ -60,19 +60,26 @@ class ClusterHead(SensorNode):
             target_nodes (list[SensorNode]): List of sensor nodes in the cluster.
             time_step_s (float): The duration of the power transmission.
             mrc_model (MRC_Model): The physics model for MRC power transfer.
+        
+        Returns:
+            tuple[float, float]: (delivered_total_j, energy_sent_j)
         """
         energy_consumed = self.mrc_tx_power_w * time_step_s
         if self.current_energy < energy_consumed:
             # Not enough energy to transmit
-            return
+            return 0.0, 0.0
 
         self.current_energy -= energy_consumed
         self.record_transfer(transferred=energy_consumed)
 
+        delivered_total_j = 0.0
         # Calculate and deliver power to each target node
         for node in target_nodes:
             received_power_w = mrc_model.calculate_received_mrc_power(self, node)
             node.receive_mrc_power(received_power_w, time_step_s)
+            delivered_total_j += received_power_w * time_step_s
+        
+        return delivered_total_j, energy_consumed
 
     def __repr__(self):
         return f"ClusterHead(ID={self.node_id}, Energy={self.current_energy:.3f}J)"

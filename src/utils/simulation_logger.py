@@ -52,19 +52,34 @@ class SimulationLogger:
             log_str += "- **Result**: No viable energy path found or no power transferred.\n"
         self.log_buffer.append(log_str)
 
-    def log_energy_transfer(self, rf_target, max_power_w, mrc_transmitting_chs, time_step):
+    def log_energy_transfer(self, rf_target, rf_sent_energy_j, rf_delivered_energy_j, mrc_entries):
         log_str = "### 3. Energy & Information Flow\n"
         log_str += "#### Energy Flow\n"
-        if rf_target and max_power_w > 0:
-            energy_gained = max_power_w * time_step
-            log_str += f"- `RF_TX` -> `{rf_target.node_id}`: Transferred `{energy_gained:.6f}` J.\n"
+        any_energy = False
+        # RF long-range
+        if rf_target and (rf_sent_energy_j is not None):
+            eta_rf = (rf_delivered_energy_j / rf_sent_energy_j) if rf_sent_energy_j > 0 else 0.0
+            log_str += (
+                f"- RF_TX -> `{rf_target.node_id}`: Sent `{rf_sent_energy_j:.6f}` J, "
+                f"Delivered `{rf_delivered_energy_j:.6f}` J, Efficiency `{eta_rf:.6e}`.\n"
+            )
+            any_energy = True
         
-        if mrc_transmitting_chs:
-            for ch in mrc_transmitting_chs:
-                log_str += f"- `{ch.node_id}` -> its cluster nodes: MRC local transfer initiated.\n"
+        # MRC local transfers
+        if mrc_entries:
+            for entry in mrc_entries:
+                ch_id = entry.get('ch_id')
+                sent_j = entry.get('sent_j', 0.0)
+                delivered_j = entry.get('delivered_j', 0.0)
+                eta = (delivered_j / sent_j) if sent_j > 0 else 0.0
+                log_str += (
+                    f"- `{ch_id}` (MRC) -> cluster nodes: Sent `{sent_j:.6f}` J, "
+                    f"Delivered `{delivered_j:.6f}` J, Efficiency `{eta:.6e}`.\n"
+                )
+                any_energy = True
         
-        if not (rf_target and max_power_w > 0) and not mrc_transmitting_chs:
-             log_str += "- No energy transfer in this step.\n"
+        if not any_energy:
+            log_str += "- No energy transfer in this step.\n"
 
         log_str += "\n#### Information Flow (Conceptual)\n"
         log_str += "- Sensor Nodes -> Cluster Heads: Data packets (e.g., sensor readings).\n"

@@ -42,22 +42,33 @@ def run_simulation():
 
         # b. Perform long-range RF power transfer
         best_path, max_power_w = [], 0.0
+        rf_sent_energy_j, rf_delivered_energy_j = None, 0.0
         if rf_target_ch:
             best_path, max_power_w = routing_algorithm.find_optimal_energy_path(wsn, rf_target_ch)
             logger.log_routing(best_path, max_power_w)
             
+            # RF transmitter sent energy this step (assumed continuous TX)
+            rf_sent_energy_j = wsn.rf_transmitter.power_w * SimConfig.TIME_STEP_S
+            
             if max_power_w > 0:
-                # c. Update target CH energy
+                # c. Update target CH energy (delivered energy)
+                rf_delivered_energy_j = max_power_w * SimConfig.TIME_STEP_S
                 rf_target_ch.receive_rf_power(max_power_w, SimConfig.TIME_STEP_S)
 
-        # d. Log energy flow
-        logger.log_energy_transfer(rf_target_ch, max_power_w, mrc_transmitting_chs, SimConfig.TIME_STEP_S)
-
-        # e. Perform local MRC power transfer
+        # e. Perform local MRC power transfer and collect per-CH send/deliver
+        mrc_entries = []
         for ch in mrc_transmitting_chs:
             # The CH transmits power to its own sensor nodes
             target_nodes = [c.sensor_nodes for c in wsn.clusters if c.cluster_head == ch][0]
-            ch.transmit_mrc_power(target_nodes, SimConfig.TIME_STEP_S, mrc_model)
+            delivered_j, sent_j = ch.transmit_mrc_power(target_nodes, SimConfig.TIME_STEP_S, mrc_model)
+            mrc_entries.append({
+                'ch_id': ch.node_id,
+                'sent_j': sent_j,
+                'delivered_j': delivered_j,
+            })
+
+        # d. Log energy flow (RF + MRC)
+        logger.log_energy_transfer(rf_target_ch, rf_sent_energy_j, rf_delivered_energy_j, mrc_entries)
 
         # f. Update energy for all nodes due to idle consumption
         for node in all_nodes:

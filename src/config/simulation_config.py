@@ -26,11 +26,13 @@ class EnvConfig:
     HEIGHTMAP_SCALE_BAR_PIXELS = 250  # 标尺对应的像素长度，需量取后填写
     HEIGHTMAP_MIN_ELEV = 81   # 热力图最低处对应的海拔（米），可用 Sink 海拔近似
     HEIGHTMAP_MAX_ELEV = 925  # 热力图最高处对应的海拔（米），可用最高 RIS 海拔近似
-    # 大气和路径损耗参数
-    PATH_LOSS_EXPONENT = 1.5  # 自由空间近似：路径损耗指数 n=1.5
-    REFERENCE_DISTANCE = 1.0  # meters
-    REFERENCE_PATH_LOSS = 30.0  # dB
-    NLOS_EXTRA_LOSS_DB = 20.0   # 非视距链路额外损耗（dB）
+    # 大气和路径损耗参数（CI模型）
+    REFERENCE_DISTANCE = 1.0  # d0, meters
+    # LoS / NLoS 路径损耗指数（可根据场景校准）
+    PATH_LOSS_EXPONENT_LOS = 1.5
+    PATH_LOSS_EXPONENT_NLOS = 3.5
+    # 固定 NLOS 额外损耗（建议为 0；若场景需要，可设为 0–5 dB）
+    NLOS_EXTRA_LOSS_DB = 0.0
 
 # ==============================================================================
 # 汇聚节点（主站）配置
@@ -41,9 +43,9 @@ class SinkConfig:
     # 发射功率（单位：瓦）
     TRANSMIT_POWER_W = 10.0
     # 工作频率（单位：赫兹）
-    FREQUENCY_HZ = 300e6  # 300 MHz（用于灵敏度分析）
+    FREQUENCY_HZ = 100e6  # 300 MHz（用于灵敏度分析）
     # 天线增益（单位：dBi）
-    ANTENNA_GAIN_DBI = 6.0
+    ANTENNA_GAIN_DBI = 18.0
 
 # ==============================================================================
 # 可重构智能表面 (RIS) 配置
@@ -115,7 +117,7 @@ class ClusterHeadConfig:
     # 簇头与传感器节点有相似的基础属性，但电池容量可能更大
     INITIAL_ENERGY_J = 1.0
     # RF接收天线增益 (单位：dBi)
-    RF_RX_GAIN_DBI = 3.0
+    RF_RX_GAIN_DBI = 9.0
     # MRC发射器属性
     MRC_TX_POWER_W = 0.5
     MRC_TX_FREQUENCY_HZ = 13.56e6 # 13.56 MHz 用于近场通信

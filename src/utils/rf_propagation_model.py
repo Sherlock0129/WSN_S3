@@ -118,23 +118,28 @@ def calculate_ris_assisted_power(source, ris, target, env):
 
 def _log_distance_path_loss(tx_power_dbm, tx_gain_dbi, rx_gain_dbi, frequency_hz, distance_m, is_los):
     """
-    对 Friis 模型进行扩展，加入对数距离路径损耗指数与 NLOS 额外损耗。
+    使用 Close-In (CI) 模型：
+      PL(d) = FSPL(f, d0) + 10 * n * log10(d / d0) [+ X_sigma]
+    其中 d0 = EnvConfig.REFERENCE_DISTANCE。
+    LoS 与 NLoS 使用不同的路径损耗指数 n，避免重复计距与过度保守的固定 NLOS 叠加。
     """
     if distance_m <= 0:
         return -np.inf
 
-    # 基础自由空间路径损耗 (dB)
-    fspl_db = 20 * np.log10(distance_m) + 20 * np.log10(frequency_hz) - 147.55
+    d0 = max(EnvConfig.REFERENCE_DISTANCE, 1e-6)
+    d = max(distance_m, d0)
 
-    # 对数距离模型修正：当路径损耗指数 n != 2 时进行补偿
-    n = EnvConfig.PATH_LOSS_EXPONENT
-    fspl_ref_db = 20 * np.log10(distance_m)
-    log_dist_correction = 10 * (n - 2) * np.log10(distance_m)
+    # FSPL at reference distance d0 (dB): 20*log10(f) + 20*log10(d0) - 147.55
+    fspl_d0_db = 20 * np.log10(frequency_hz) + 20 * np.log10(d0) - 147.55
 
-    path_loss_db = fspl_db + log_dist_correction
+    # Select path-loss exponent based on LoS/NLoS
+    n = getattr(EnvConfig, 'PATH_LOSS_EXPONENT_LOS', 2.0) if is_los else getattr(EnvConfig, 'PATH_LOSS_EXPONENT_NLOS', 3.5)
 
-    # NLOS 额外损耗
-    if not is_los:
+    # CI model path loss (dB)
+    path_loss_db = fspl_d0_db + 10 * n * np.log10(d / d0)
+
+    # Optional additional NLoS loss (kept for compatibility, default 0)
+    if not is_los and getattr(EnvConfig, 'NLOS_EXTRA_LOSS_DB', 0.0) > 0:
         path_loss_db += EnvConfig.NLOS_EXTRA_LOSS_DB
 
     return tx_power_dbm + tx_gain_dbi + rx_gain_dbi - path_loss_db
