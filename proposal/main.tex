@@ -14,7 +14,7 @@
 \usepackage{float}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric}
-
+\usepackage{pgfplots} \pgfplotsset{compat=1.18}
 \hypersetup{
   colorlinks=true,
   linkcolor=blue,
@@ -389,5 +389,56 @@ Evaluate:
   \label{fig:system_arch}
   \end{figure}
   
+
+  \begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+    \begin{axis}[
+        width=10cm,
+        height=6cm,
+        xlabel={Distance between Tx and Rx (cm)},
+        ylabel={Power Transfer Efficiency (\%)},
+        xmin=0, xmax=40,
+        ymin=0, ymax=80,
+        grid=both,
+        legend style={at={(0.5,1.02)},anchor=south,legend columns=-1},
+        legend cell align={left},
+        ticklabel style={font=\small},
+        label style={font=\small}
+    ]
+    
+    % No RIS curve (示例数据，可换成你自己实验数据)
+    \addplot[thick,mark=o] coordinates {
+        (5,70)
+        (10,60)
+        (15,45)
+        (20,30)
+        (25,20)
+        (30,12)
+        (35,7)
+        (40,4)
+    };
+    \addlegendentry{Without RIS}
+    
+    % With RIS curve (示例数据)
+    \addplot[thick,mark=triangle*] coordinates {
+        (5,72)
+        (10,68)
+        (15,60)
+        (20,50)
+        (25,40)
+        (30,30)
+        (35,22)
+        (40,16)
+    };
+    \addlegendentry{With RIS}
+    
+    \end{axis}
+    \end{tikzpicture}
+    \caption{Comparison of power transfer efficiency with and without RIS as distance increases.}
+    \label{fig:efficiency_comparison}
+    \end{figure}
+
+    
 
 \end{document}
