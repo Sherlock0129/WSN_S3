@@ -41,6 +41,11 @@ class ClusterHead(SensorNode):
         self.mrc_tx_power_w = ClusterHeadConfig.MRC_TX_POWER_W
         self.mrc_tx_frequency_hz = ClusterHeadConfig.MRC_TX_FREQUENCY_HZ
         self.mrc_tx_gain_dbi = ClusterHeadConfig.MRC_TX_GAIN_DBI
+
+        # Far-field RF transmitter capability (for cross-cluster donation)
+        self.rf_tx_power_w = ClusterHeadConfig.CH_RF_TX_POWER_W
+        self.frequency_hz = ClusterHeadConfig.CH_RF_TX_FREQUENCY_HZ
+        self.antenna_gain_dbi = ClusterHeadConfig.CH_RF_TX_GAIN_DBI
         
         print(f"ClusterHead {self.node_id} created at position {self.position}")
 
@@ -92,6 +97,11 @@ class ClusterHead(SensorNode):
         """
         power_mw = self.rf_tx_power_w * 1000.0
         return 10 * np.log10(max(power_mw, 1e-12))
+
+    def get_tx_power_dbm(self):
+        """Return RF TX power (far-field) in dBm for cross-cluster donation."""
+        power_mw = max(1e-12, self.rf_tx_power_w * 1000.0)
+        return 10 * np.log10(power_mw)
 
     def __repr__(self):
         return f"ClusterHead(ID={self.node_id}, Energy={self.current_energy:.3f}J)"

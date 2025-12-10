@@ -158,7 +158,7 @@ class SimConfig:
     TRIGGER_LOW_PCT = 0.30
     TRIGGER_HIGH_PCT = 0.80
     # 总仿真时间 (单位：秒)
-    SIMULATION_TIME_S = 7200  # 2小时（论文图快速生成，可调）
+    SIMULATION_TIME_S = 14400  # 2小时（论文图快速生成，可调）
     # 时间步长 (单位：秒)
     TIME_STEP_S = 1.0
     # 用于可复现性的随机种子

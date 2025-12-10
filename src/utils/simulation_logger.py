@@ -9,7 +9,7 @@ class SimulationLogger:
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"log_{timestamp}.md"
+        filename = f"log_{timestamp}.txt"
         self.log_file_path = os.path.join(log_dir, filename)
         
         # In-memory buffer to store log strings

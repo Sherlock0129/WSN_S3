@@ -114,13 +114,14 @@ def build_transform_from_S3(s3_csv_path: str):
 # Scenario loading from sink.csv
 # ----------------------
 
-def load_scenario(s3_csv_path='src/data/S3.csv', sink_csv_path='src/data/sink.csv'):
+def load_scenario(s3_csv_path='data/S3.csv', sink_csv_path='data/sink.csv'):
     meta, transform = build_transform_from_S3(s3_csv_path)
     df = pd.read_csv(sink_csv_path)
 
     sink_pos = None
     rf_positions = []
     ris_positions = []
+    skipped = []
 
     for _, row in df.iterrows():
         wkt = row.get('WKT')
@@ -130,29 +131,31 @@ def load_scenario(s3_csv_path='src/data/S3.csv', sink_csv_path='src/data/sink.cs
         lon, lat, h = pts[0]
         pos = transform(lon, lat, h)
 
-        # Determine type
+        # Determine type with robust rules
         t = str(row.get('type', '')).lower()
         name = str(row.get('name', '')).lower()
         id_str = str(row.get('id', '')).lower()
-        key = t or name or id_str
+        cat = str(row.get('category', '')).lower()
+
+        key = t or name or id_str or cat
         if 'sink' in key:
             sink_pos = pos
-        elif key.startswith('rf') or 'rf' in key or 'ch' in key or 'cluster' in key:
-            rf_positions.append(pos)
-        elif 'ris' in key:
+        elif key.startswith('ris') or ' ris' in key or 'ris' in key or 'pis' in key:
+            # 'PIS' 也归为 RIS（数据采集中的命名变体）
             ris_positions.append(pos)
+        elif key.startswith('rf') or key.startswith('ch') or ' cluster' in key or 'rf' in key or 'ch' in key:
+            rf_positions.append(pos)
         else:
-            # Fallback: if there's a category column
-            cat = str(row.get('category', '')).lower()
-            if 'sink' in cat:
-                sink_pos = pos
-            elif 'ris' in cat:
-                ris_positions.append(pos)
-            else:
-                rf_positions.append(pos)
+            skipped.append(row.to_dict())
 
     if sink_pos is None:
         raise ValueError("sink.csv 中未找到 sink 位置（需在 type/name/id/category 中包含 'sink' 关键词）")
+
+    # 简要统计，方便核对
+    print(f"[scenario_loader] sink: 1, rf: {len(rf_positions)}, ris: {len(ris_positions)}, skipped: {len(skipped)}")
+    if skipped:
+        names = [str(s.get('name', '')) for s in skipped]
+        print(f"[scenario_loader] skipped entries (no match): {names}")
 
     return {
         'sink_pos': sink_pos,
@@ -194,18 +197,19 @@ def _auto_resolution(x: np.ndarray, y: np.ndarray) -> float:
 
 
 def build_dem_from_S3(
-    s3_csv_path: str = 'src/data/S3.csv',
-    lake_csv_path: str = 'src/data/LAKE.csv',
+    s3_csv_path: str = 'data/S3.csv',
+    lake_csv_path: str = 'data/LAKE.csv',
     grid_resolution_m: float | None = None,
     method: str = 'linear',
     fill: str = 'nearest',
     smooth_sigma: float | None = None,
+    lake_flatten: bool = False,
 ) -> Dict[str, Any]:
     """
     Build DEM from S3.csv point cloud in the local XYZ frame defined by build_transform_from_S3.
     - Interpolation: linear (Triangulation+LinearTriInterpolator)
     - Fill outside convex hull: nearest (griddata) if requested
-    - Lake flattening: read polygons from LAKE.csv and set DEM inside each polygon to its min elevation
+    - Lake flattening (DISABLED by default): if lake_flatten True, set DEM inside each lake polygon to its min elevation
 
     Returns dict with keys: dem (H×W), origin_xy (xmin,ymin), resolution, x_coords, y_coords
     """
@@ -233,35 +237,36 @@ def build_dem_from_S3(
         mask = np.isnan(Z)
         Z[mask] = Zn[mask]
 
-    # Lake flattening
-    try:
-        lake_df = pd.read_csv(lake_csv_path)
-        for _, row in lake_df.iterrows():
-            wkt = row.get('WKT', '')
-            # Extract lon lat pairs (ignore z if present)
-            lonlats = []
-            for tok in re.findall(r'(-?[\d\.]+\s+-?[\d\.]+)', wkt):
-                parts = tok.strip().split()
-                if len(parts) == 2:
-                    lon = float(parts[0]); lat = float(parts[1])
-                    lonlats.append((lon, lat))
-            if len(lonlats) < 3:
-                continue
-            # Transform polygon to local XY
-            poly_xy = []
-            for lon, lat in lonlats:
-                px, py, pz = transform(lon, lat, 0.0)
-                poly_xy.append((px, py))
-            path = MplPath(poly_xy)
-            pts_xy = np.column_stack([XI.ravel(), YI.ravel()])
-            inside = path.contains_points(pts_xy)
-            inside_mask = inside.reshape(Z.shape)
-            if not np.any(inside_mask):
-                continue
-            lake_min = float(np.nanmin(Z[inside_mask]))
-            Z[inside_mask] = lake_min
-    except Exception as e:
-        print(f"[scenario_loader] lake flatten failed: {e}")
+    # Lake flattening (disabled by default)
+    if lake_flatten:
+        try:
+            lake_df = pd.read_csv(lake_csv_path)
+            for _, row in lake_df.iterrows():
+                wkt = row.get('WKT', '')
+                # Extract lon lat pairs (ignore z if present)
+                lonlats = []
+                for tok in re.findall(r'(-?[\d\.]+\s+-?[\d\.]+)', wkt):
+                    parts = tok.strip().split()
+                    if len(parts) == 2:
+                        lon = float(parts[0]); lat = float(parts[1])
+                        lonlats.append((lon, lat))
+                if len(lonlats) < 3:
+                    continue
+                # Transform polygon to local XY
+                poly_xy = []
+                for lon, lat in lonlats:
+                    px, py, pz = transform(lon, lat, 0.0)
+                    poly_xy.append((px, py))
+                path = MplPath(poly_xy)
+                pts_xy = np.column_stack([XI.ravel(), YI.ravel()])
+                inside = path.contains_points(pts_xy)
+                inside_mask = inside.reshape(Z.shape)
+                if not np.any(inside_mask):
+                    continue
+                lake_min = float(np.nanmin(Z[inside_mask]))
+                Z[inside_mask] = lake_min
+        except Exception as e:
+            print(f"[scenario_loader] lake flatten failed: {e}")
 
     # Optional smoothing
     if smooth_sigma is not None and smooth_sigma > 0:
