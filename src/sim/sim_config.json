@@ -1,0 +1,19 @@
+{
+  "days": 7,
+  "efficiency": {
+    "model": "exp",
+    "base": 0.6,
+    "alpha": 0.0002,
+    "min_eta": 0.001
+  },
+  "donor_surplus_daily": {
+    "RF1": 1200.0,
+    "RF2": 1200.0
+  },
+  "recipient_demand_daily": {
+    "RF3": 900.0,
+    "RF4": 900.0,
+    "RF5": 900.0,
+    "RF6": 900.0
+  }
+}

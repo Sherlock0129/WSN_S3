@@ -5,10 +5,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from typing import Tuple, List
+
 # Better CJK font fallback
 mpl.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'Noto Sans CJK SC', 'Arial Unicode MS', 'DejaVu Sans']
 mpl.rcParams['axes.unicode_minus'] = False
-from typing import Tuple, List
 
 # Optional dependencies
 try:
@@ -147,7 +148,54 @@ def cos_incidence_on_slope(lat_deg: float, dec_deg: float, hours: np.ndarray, sl
     return np.maximum(0.0, cos_i)
 
 
-def plot_all(points_csvs: List[str], outputs_dir: str, fig_name: str, lang: str = 'zh', slope_deg: float = 30.0, dem_res_m: float = 80.0, dpi: int = 220):
+def plot_radiation_figs(center_lat: float, dec_deg: float, slope_deg: float, outputs_dir: str, dpi: int, lang: str):
+    hours = np.linspace(8, 16, 121)
+    alt_curve = solar_altitude_curve(center_lat, dec_deg, hours)
+    cos_s = cos_incidence_on_slope(center_lat, dec_deg, hours, slope_deg=slope_deg, aspect_deg=180.0)
+    cos_n = cos_incidence_on_slope(center_lat, dec_deg, hours, slope_deg=slope_deg, aspect_deg=0.0)
+
+    # Figure A: Solar Altitude
+    figA = plt.figure(figsize=(6.4, 4.0), dpi=dpi)
+    axA = figA.add_subplot(1, 1, 1)
+    axA.plot(hours, alt_curve, color='#e69f00', lw=2.2)
+    if lang == 'zh':
+        axA.set_title('冬至日太阳高度角（纬度 {:.2f}°N）'.format(center_lat))
+        axA.set_xlabel('小时')
+        axA.set_ylabel('太阳高度角 (°)')
+    else:
+        axA.set_title('Winter Solstice Solar Altitude at {:.2f}°N'.format(center_lat))
+        axA.set_xlabel('Hour')
+        axA.set_ylabel('Solar altitude (deg)')
+    axA.set_xlim(8, 16)
+    axA.grid(alpha=0.3)
+    pathA = os.path.join(outputs_dir, 'solar_altitude.png')
+    figA.tight_layout()
+    figA.savefig(pathA, bbox_inches='tight')
+
+    # Figure B: South vs North irradiance
+    figB = plt.figure(figsize=(6.4, 4.0), dpi=dpi)
+    axB = figB.add_subplot(1, 1, 1)
+    axB.plot(hours, cos_s, label=('南坡 {:.0f}°'.format(slope_deg) if lang == 'zh' else f'South {slope_deg:.0f}°'), color='#f0ad4e', lw=2.0)
+    axB.plot(hours, cos_n, label=('北坡 {:.0f}°'.format(slope_deg) if lang == 'zh' else f'North {slope_deg:.0f}°'), color='#5bc0de', lw=2.0)
+    if lang == 'zh':
+        axB.set_title('南北坡相对直射（入射余弦）')
+        axB.set_xlabel('小时')
+        axB.set_ylabel('相对辐照（cosθ）')
+    else:
+        axB.set_title('South vs North Slope Irradiance (approx)')
+        axB.set_xlabel('Hour')
+        axB.set_ylabel('Relative Irradiance (cos incidence)')
+    axB.set_xlim(8, 16)
+    axB.legend()
+    axB.grid(alpha=0.3)
+    pathB = os.path.join(outputs_dir, 'south_north_irradiance.png')
+    figB.tight_layout()
+    figB.savefig(pathB, bbox_inches='tight')
+
+    return pathA, pathB
+
+
+def plot_all(points_csvs: List[str], outputs_dir: str, fig_name: str, lang: str = 'zh', slope_deg: float = 30.0, dem_res_m: float = 80.0, dpi: int = 220, separate: bool = False):
     os.makedirs(outputs_dir, exist_ok=True)
 
     pts = load_points(points_csvs)
@@ -161,6 +209,11 @@ def plot_all(points_csvs: List[str], outputs_dir: str, fig_name: str, lang: str 
     # Relative irradiance on south/north slopes
     cos_s = cos_incidence_on_slope(center_lat, dec_deg, hours, slope_deg=slope_deg, aspect_deg=180.0)
     cos_n = cos_incidence_on_slope(center_lat, dec_deg, hours, slope_deg=slope_deg, aspect_deg=0.0)
+
+    # If only radiation figs are required as separate files
+    sepA, sepB = None, None
+    if separate:
+        sepA, sepB = plot_radiation_figs(center_lat, dec_deg, slope_deg, outputs_dir, dpi, lang)
 
     # DEM interpolation in meters
     xm, ym, crs = latlon_to_meters(pts['lon'].to_numpy(), pts['lat'].to_numpy())
@@ -179,7 +232,7 @@ def plot_all(points_csvs: List[str], outputs_dir: str, fig_name: str, lang: str 
     lat_min, lat_max = pts['lat'].min(), pts['lat'].max()
     extent = [lon_min, lon_max, lat_min, lat_max]
 
-    # Figure
+    # Composite figure (4 panels)
     fig = plt.figure(figsize=(6.4, 12), dpi=dpi)
 
     # 1) Solar altitude
@@ -254,7 +307,7 @@ def plot_all(points_csvs: List[str], outputs_dir: str, fig_name: str, lang: str 
         f.write(f"Azimuth at noon (deg from North, CW): {noon_az:.1f}\n")
         f.write(f"DEM grid CRS: {crs}, dx={dx:.1f} m, dy={dy:.1f} m\n")
 
-    return fig_path, meta_path
+    return fig_path, meta_path, sepA, sepB
 
 
 if __name__ == '__main__':
@@ -266,8 +319,22 @@ if __name__ == '__main__':
     parser.add_argument('--slope', type=float, default=30.0)
     parser.add_argument('--dem_res', type=float, default=80.0)
     parser.add_argument('--dpi', type=int, default=220)
+    parser.add_argument('--separate', action='store_true', help='also save two standalone figures for radiation plots')
     args = parser.parse_args()
 
-    fig_path, meta_path = plot_all(args.points, outputs_dir=args.outdir, fig_name=args.outfile, lang=args.lang, slope_deg=args.slope, dem_res_m=args.dem_res, dpi=args.dpi)
+    fig_path, meta_path, sepA, sepB = plot_all(
+        args.points,
+        outputs_dir=args.outdir,
+        fig_name=args.outfile,
+        lang=args.lang,
+        slope_deg=args.slope,
+        dem_res_m=args.dem_res,
+        dpi=args.dpi,
+        separate=args.separate,
+    )
     print('Saved figure to:', fig_path)
     print('Saved meta to:', meta_path)
+    if sepA:
+        print('Saved solar altitude figure to:', sepA)
+    if sepB:
+        print('Saved south vs north irradiance figure to:', sepB)

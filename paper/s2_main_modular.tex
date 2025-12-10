@@ -13,7 +13,12 @@
 
 % *** MATH PACKAGES ***
 \usepackage{amsmath,amssymb,amsfonts}
+\usepackage{mathtools} % extends amsmath
 \usepackage{algorithmic}
+
+% Allow equation breaks across lines/columns per IEEEtran guidance
+\interdisplaylinepenalty=2500
+\allowdisplaybreaks[3]
 
 % *** SPECIALIZED LIST PACKAGES ***
 \usepackage{enumitem}
@@ -34,6 +39,9 @@
 \usepackage{url}
 \usepackage{hyperref}
 
+% *** TYPOGRAPHY ***
+\usepackage[final]{microtype} % better kerning/expansion; reduces overfull boxes
+
 % *** CHINESE SUPPORT ***
 \usepackage[UTF8]{ctex}
 
@@ -42,12 +50,9 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{tikz}
-\usetikzlibrary{positioning}
-\usetikzlibrary{shapes.geometric, arrows}
+\usetikzlibrary{positioning, shapes.geometric, arrows}
 \usepackage{mdframed}  % 可分页的背景框
-
-% correct bad hyphenation here
-\hyphenation{op-tical net-works semi-conduc-tor}
+\hyphenation{op-tical net-works semi-con-duc-tor}
 
 \begin{document}
 

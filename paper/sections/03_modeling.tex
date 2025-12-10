@@ -1,17 +1,206 @@
 \section{系统建模}\label{sec:model}
 
-\textbf{核心科学问题。} 如何设计、建模和优化一个可扩展的分层RF--RIS--MRC无线输能系统，使其能够在复杂的非视距环境中可靠地传输能量，并高效地为大规模WSN部署供能，同时在统一框架内协调长距离RF能量路由和近场磁共振充能？该问题自然分解为以下三个紧密耦合的子问题：
+本章从“节点建模”和“场景建模”两个层面给出我们所建立的全部模型，覆盖能量、近场耦合/超表面、计算通信负载、存储与控制开销等，为后续机制设计与优化奠定基础。
 
-\textbf{子问题1：多RIS协作NLOS环境能量路由。} 如何在直接视距链路不存在的复杂地形中构建和优化多跳RIS辅助RF能量路径？具体包括：(i) 如何建模真实地形（如山地、障碍物）上的多RIS级联反射信道，并将地形高程和阴影纳入能量路由？(ii) 如何联合设计能量路由路径和RIS相位配置，以最大化接收功率、最小化路径损耗或平衡多簇能量分配？(iii) 如何保持对环境变化（如植被、部分遮挡）的鲁棒性，并支持扩展到额外的RIS面板和WSN簇？
+\subsection{节点建模}\label{subsec:node_model}
+本节针对四类节点——传感器节点（Sensor）、可重构智能反射面（RIS）、RF 簇头（Cluster Head, CH）与 Sink（信息汇聚与调度）——分别给出能量、耦合/物理、计算通信与存储控制等模型。
 
-\textbf{子问题2：RIS增强MRC近场能量聚焦与鲁棒性。} 如何将可编程超表面用作近场能量透镜，以增强簇内磁共振耦合效率和错位容忍度？具体包括：(i) RIS结构重塑近场磁场分布并改善耦合系数、品质因数和端到端效率的底层机制是什么？(ii) RIS结构参数（单元几何、周期性、材料特性）如何影响聚焦强度、效率和线圈位移/旋转鲁棒性之间的权衡？(iii) 如何设计自适应RIS控制模式，以补偿实际部署中传感器节点的空间漂移或位置不确定性？
+\subsubsection{传感器节点（Sensor）}
+\paragraph{(a) 能量模型：光伏获能 + 用能 + 向 CH 的 MRC 送能}
+传感器节点通过太阳能获能，并以近场 MRC 方式向 CH 反向送能。设每帧周期为 \(T_f\)。
+- 光伏获能：
+\begin{equation}
+\begin{aligned}
+P_{\text{PV}}(t) &= \eta_{\text{pv}}\,A_{\text{pv}}\,G_t(t)\,\Xi(\psi,\theta_{\odot},t),\\
+E_{\text{PV}} &= \int_{t}^{t+T_f} P_{\text{PV}}(\tau)\,\mathrm{d}\tau
+\end{aligned}
+\end{equation}
+其中 \(\eta_{\text{pv}}\) 为组件效率，\(A_{\text{pv}}\) 为面积，\(G_t\) 为到达水平面的总辐照度，\(\Xi\in[0,1]\) 为入射角/遮挡修正项（含地形/建筑遮阴）。
+- 本地用能：
+\begin{equation}
+\begin{aligned}
+E_{\text{use}} &= P_{\text{sense}}t_{\text{sense}} + P_{\text{comp}}t_{\text{comp}} + P_{\text{tx}}^{\text{RF}}t_{\text{tx}}\\
+&\quad + P_{\text{rx}}t_{\text{rx}} + P_{\text{idle}}t_{\text{idle}}
+\end{aligned}
+\end{equation}
+- 向 CH 的 MRC 送能：节点以线圈驱动功率 \(P_{u\to k}^{\text{tx}}\) 在时长 \(t_{u\to k}\) 内向所属簇 \(k\) 的 CH 送能，其到达 CH 的能量为
+\begin{equation}
+\begin{aligned}
+E_{u\to k}^{\text{MRC}} &= \eta_{u\to k}^{\text{MRC}}\, P_{u\to k}^{\text{tx}}\, t_{u\to k},\\
+0 &\le \eta_{u\to k}^{\text{MRC}}\le 1
+\end{aligned}
+\end{equation}
+其中效率 \(\eta_{u\to k}^{\text{MRC}}\) 由耦合系数、品质因数与可能的 RIS 聚焦共同决定（见下）。节点侧驱动损耗由逆变/功放效率 \(\eta_{\text{drv}}\) 计入：\(E_{\text{drv}}=P_{u\to k}^{\text{tx}}t_{u\to k}/\eta_{\text{drv}}\)。
+- 电池演化：
+\begin{equation}
+E_{u}(t+T_f)=\min\{E_{\max},\; E_u(t)+E_{\text{PV}}-E_{\text{use}}-E_{\text{drv}}\}.
+\end{equation}
 
-\textbf{子问题3：RF--RIS--MRC--WSN分层系统的跨层协调。} 如何构建统一的、可扩展的能量流框架，协调长距离RF能量路由、簇级MRC充能和WSN工作负载需求？具体包括：(i) 如何将分层RF--RIS--MRC--WSN系统建模为能量流图，并在每层定义约束（功率预算、RIS配置资源、硬件限制）？(ii) 如何设计跨层优化算法，联合分配RF和MRC层之间的功率，选择RIS能量路由，并根据流量负载和剩余能量调度簇级功率分配？(iii) 如何确保所得架构在网络规模方面保持可扩展性，并可扩展到新组件（如无人机载RIS、移动机器人、6G物联网节点），而无需重新设计整个系统？
+\paragraph{(b) 近场耦合/物理模型}
+两线圈谐振耦合效率近似为
+\begin{equation}
+\begin{aligned}
+\eta_{u\to k}^{\text{MRC}} &\approx \frac{k_{u,k}^2 Q_u Q_k}{\big(1+\sqrt{1+k_{u,k}^2 Q_u Q_k}\big)^2},\\
+k_{u,k} &= \frac{M_{u,k}}{\sqrt{L_u L_k}}
+\end{aligned}
+\end{equation}
+互感 \(M_{u,k}=M(d,\Delta z,\theta)\) 随水平/垂直偏移与姿态角变化。若存在近场 RIS/超表面，其增益以函数 \(\mathcal{F}_{\text{RIS}}\) 修正：\(\eta\leftarrow \eta\cdot\mathcal{F}_{\text{RIS}}(\text{结构, 频率, 姿态})\)。
 
-\textbf{网络与能量模型。} 多个簇部署在遮挡地形中；簇头（CH）具备 RF 接收与 MRC 发射，簇内节点具备 MRC 接收。多块 RIS 形成可控反射多跳，将 RF 功率从源端路由到各 CH；路径损耗、遮挡和 RIS 相移决定接收功率；近场耦合系数刻画 MRC 效率与偏移敏感度。
+\paragraph{(c) 计算与通信负载模型}
+- 业务到达：每帧产生数据 \(A_u(t)\)（可泊松/伯努利事件驱动）。
+- 通信：低功耗 RF 向 CH 上传，单位比特能耗 \(\epsilon_{\text{tx}}\)、接收能耗 \(\epsilon_{\text{rx}}\)。
+- 计算：本地处理量 \(C_u\)（CPU 周期）与动态功耗 \(P\propto f^\gamma\)。
 
-\textbf{信息模型（AOEI）。} 各节点/簇头维护能量状态信息（ESI），能量信息年龄 AOEI 衡量新鲜度，超过阈值触发优先上报以指导能量路由与充能决策。
+\paragraph{(d) 存储与控制开销}
+- 电池容量 \(E_{\max}\)、荷电状态（SOC）与老化可通过库仑计或衰减模型修正。
+- 控制开销：接收 Sink/CH 的调度指令，开销合入 \(E_{\text{use}}\)。
 
-\textbf{控制时序。} 帧划分为规划与执行时隙：ALDP 规划 RF 多跳与 MRC 充能时长；EETOR 选择携带 ESI 的机会式能量路由。
+\subsubsection{可重构智能反射面（RIS）}
+\paragraph{(a) 反射/超表面模型}
+RIS 由 \(N\) 个单元组成，等效反射矩阵
+\begin{equation}
+\begin{aligned}
+\boldsymbol{\Theta} &= \operatorname{diag}(\beta_1 e^{j\theta_1},\ldots,\beta_N e^{j\theta_N}),\\
+\theta_n &\in \mathcal{Q},\ \ 0\le\beta_n\le 1.
+\end{aligned}
+\end{equation}
+在近场工作区，RIS 通过改变等效边界条件重塑磁场分布，提升 \(k_{u,k}\) 或有效 \(Q\)，其对 \(\eta^{\text{MRC}}\) 的作用以经验/仿真查表函数 \(\mathcal{F}_{\text{RIS}}\) 体现。
 
-\textbf{指标。} (i) 寿命：首节点失效时间；(ii) 能量均衡：剩余能量变异系数；(iii) 信息新鲜度：平均/尾部 AOEI；(iv) 输能效率：接收 RF/MRC 功率与端到端效率。
+\paragraph{(b) 硬件与约束}
+相位量化比特 \(b\)、更新速率、插入损耗与功耗 \(P_{\text{RIS}}\)（通常极低）。配置比特数计入控制开销。
+
+\subsubsection{RF 簇头（CH）}
+\paragraph{(a) 能量模型：仅由簇成员的 MRC 供能}
+CH 的能量来源完全来自本簇成员通过 MRC 反向送能：
+\begin{equation}
+E_{\text{in}}^{\text{MRC}}=\sum_{u\in\mathcal{U}_k} \eta_{u\to k}^{\text{MRC}}\, P_{u\to k}^{\text{tx}}\, t_{u\to k},\quad E_{\text{CH}}(t+T_f)=E_{\text{CH}}(t)+E_{\text{in}}^{\text{MRC}}-E_{\text{use}}^{\text{CH}}.
+\end{equation}
+其中 CH 的用能包含：
+\begin{equation}
+E_{\text{use}}^{\text{CH}}=P_{\text{rx}}^{\text{RF}}t_{\text{rx}}+P_{\text{tx}}^{\text{RF}}t_{\text{tx}}+P_{\text{comp}}t_{\text{comp}}+P_{\text{ctrl}}t_{\text{ctrl}}+P_{\text{idle}}t_{\text{idle}}.
+\end{equation}
+\paragraph{(b) 通信与计算模型}
+CH 负责聚合与上行到 Sink 的 RF 数据通信（不向 Sink 传能），链路速率 \(R_{k\to S}\) 与功耗遵循所选制式的能耗模型；本地聚合/压缩计算量 \(C_k\) 由业务决定。
+\paragraph{(c) 存储与队列}
+维护数据队列 \(Q_k\)：\(Q_k(t+1)=\max\{Q_k(t)-\mu_k(t),0\}+\sum_{u}A_u(t)\)，其中服务率 \(\mu_k\) 由 CH\(\to\)Sink 的可用时隙与信道条件决定。
+
+\subsubsection{Sink（信息汇聚与调度）}
+Sink 负责控制与数据汇聚，不参与能量传输。其功能与模型包括：
+- 控制平面：收集能量/业务状态摘要，运行时隙/功率/RIS 配置的调度算法，并下发给 CH/RIS/节点；控制能耗计入各受控节点，不计入能量链路。
+- 业务层：汇聚各 CH 上行数据，存储与转发开销可忽略或以固定功耗近似（根据实现）。
+
+% ===================== 场景建模 =====================
+\subsection{场景建模}\label{subsec:scene_model}
+
+\subsubsection{全局场景建模：Carrauntoohil 山地数据驱动}\label{sec:carrauntoohil}
+我们选取爱尔兰最高峰 Carrauntoohil 山地作为目标场景建模对象。该区域具有典型性：冬季太阳高度角低，山阴面（背阳坡）长时间处于阴影，导致光伏可用性强烈非均匀，这对“节点\(\to\)CH 的 MRC 供能”和“CH\(\to\)Sink 的上行通信”形成耦合约束。
+
+\paragraph{区域选取与数据来源。} 在卫星底图上框选研究区域，由于平台无法直接导出规则网格的高程 DEM，我们采用“稀疏采样 + 插值复原”的方法：
+- 在区域内进行 \(N\) 个高程采样（经纬度与地面高程），尽量覆盖山脊、谷地、湖泊与坡向变化显著处；
+- 采样点记为 \((\lambda_i,\varphi_i,h_i)\), \(i=1,\ldots,N\)。
+
+\paragraph{坐标与投影。} 以采样中心或首点为原点 \(O\)（经纬高 \(\lambda_0,\varphi_0,h_0\)），将 WGS-84 坐标映射到局部 ENU 米系：
+\begin{equation}
+\begin{aligned}
+x&=(\lambda-\lambda_0)\cos\varphi_0\,R_\oplus,\\
+y&=(\varphi-\varphi_0)\,R_\oplus,\\
+z&=h-h_0,\quad R_\oplus\approx 6371\,\text{km}.
+\end{aligned}
+\end{equation}
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=.95\linewidth]{sections/figures/elev_coord.png}
+  \caption{高程建系与场景边界示意。彩色底图为插值后的高程场 \(H(x,y)\)，坐标系为局部 ENU；比例尺与轴向标注对应 \((x,y)\) 的米尺度。该图对应 \(H:\Omega\to\mathbb{R}_{+}\) 的连续近似与研究域 \(\Omega\) 的选择。}
+  \label{fig:elev_coord}
+\end{figure*}
+
+\paragraph{地形复原：三角网插值 + 栅格化。} 构建地形：
+- Delaunay 三角剖分得到 TIN：\(\mathcal{T}=\operatorname{Del}({(x_i,y_i)}_{i=1}^{N})\)；
+- 在每个三角形内以重心/仿射插值恢复 \(z(x,y)\) 的连续近似（形成分段平面曲面）；
+- 将 \(z(x,y)\) 以分辨率 \(\Delta\) 栅格化为高度场 \(H[m,n]\)，得到规则 DEM（便于快速可见性/阴影运算）。
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=.95\linewidth]{sections/figures/sampling_tin.png}
+  \caption{稀疏采样与描点建模：TIN插值与规则DEM栅格化示意。}
+  \label{fig:sampling_tin}
+\end{figure}
+
+% —— 新增：采样点分布与三维重建可视化 ——
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=.8\linewidth]{sections/figures/points_group.png}
+  \caption{采样点的三维分布与分组示意。彩色散点表示不同位置处的高程/分组，可用于说明稀疏采样的空间覆盖与结构特征。}
+  \label{fig:points_group}
+\end{figure*}
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=.8\linewidth]{sections/figures/rebuild_3D.png}
+  \caption{基于稀疏样本的地形三维复原结果。通过 TIN/插值获得的连续曲面，展示地形起伏与坡向。}
+  \label{fig:rebuild_3D}
+\end{figure*}
+
+\paragraph{阴影与辐照修正。} 基于复原 DEM 计算典型日期的太阳位置 \((\alpha(t),\,\gamma(t))\)（高度角/方位角）。对每个栅格中心 \((x,y)\)：
+- 计算坡度/坡向 \((s,\,\phi)\) 与法向量 \(\mathbf{n}(x,y)\)；
+- 沿太阳入射方向进行地形遮挡投射，得到遮阴指示 \(S(x,y,t)\in\{0,1\}\)；
+- 形成光照修正因子 \(\Xi(x,y,t)=S(x,y,t)\cdot\max\{0,\mathbf{n}\cdot\mathbf{s}(t)\}\)。
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=.95\linewidth]{sections/figures/hillshade_back.png}
+  \caption{山阴（背阳坡）与地形自遮挡。给定太阳方向单位向量 \(\mathbf{s}(t)\)，对每个 \((x,y)\) 取地形法向 \(\mathbf{n}(x,y)\) 与地平角约束，得到遮阴指示 \(S(x,y,t)\in\{0,1\}\)。若沿 \(\mathbf{s}(t)\) 的射线首次与曲面 \(z=H(x,y)\) 相交于当前点之前，则 \(S=0\)。}
+  \label{fig:hillshade_back}
+\end{figure}
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=.95\linewidth]{sections/figures/shadow_model.png}
+  \caption{阴影建模与照度修正。瞬时有效入射 \(I(x,y,t)=G_0(t)\,\max\{0,\mathbf{n}(x,y)\!\cdot\!\mathbf{s}(t)\}\,S(x,y,t)\)，其中 \(G_0(t)\) 为无地形时的水平面辐照度。将 \(I\) 归一化得到 \(\Xi(x,y,t)=I/G_0\)，并用于 PV 获能模型。}
+  \label{fig:shadow_model}
+\end{figure}
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=.95\linewidth]{sections/figures/solar_geom_aspect.png}
+  \caption{太阳几何与坡向入射差异。上：某一日的太阳高度角随小时变化；下：南坡与北坡（坡度相同、坡向相差约180°）的相对入射（与入射角余弦成正比）理论曲线。冬季高纬度下，南坡全天相对入射显著大于北坡，解释了背阳坡光伏不足。}
+  \label{fig:solar_aspect}
+\end{figure}
+
+\paragraph{可见性与上行数据链路损耗（仅数据，不传能）。} 在 DEM 上对 CH\(\to\)Sink 的 RF 数据上行进行 LoS 判定与路径损耗参数选择：
+- 在两点连线方向对 \(H[m,n]\) 逐步采样，若 \(z_{\text{ray}}(d)\le H(d)\) 则标记为 NLoS；
+- LoS/NLoS 决定不同路径损耗指数/阴影项；
+- 注：本工作不设 RF 能量源，RIS 仅用于簇内近场磁场聚焦，不参与远场路由。
+
+\paragraph{簇与锚点。} 在湖泊及周边地形语义的引导下布设若干簇与 CH，并在 CH 周边选取一至多处 RIS 候选位以进行近场聚焦对比。Sink 位于山谷低处以模拟背阳通信与汇聚节点场景。图~\ref{fig:anchor_dist} 展示典型锚点间的几何距离，用于“走廊宽度选择”“可见性步长”和“路径损耗自变量”的量化。
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=.95\linewidth]{sections/figures/satellite_distance.png}
+  \caption{关键锚点与几何距离示意。连线长度标注为 \(\lVert \mathbf{a}-\mathbf{b}\rVert\)，用于：(1) 估算走廊半宽 \(W\) 和搜索域 \(\mathcal{C}\)；(2) 作为路径损耗与时延的几何自变量；(3) 用于可见性判定的步长约束。}
+  \label{fig:anchor_dist}
+\end{figure*}
+
+\paragraph{数据产物与可复现性。} 该流程生成：
+- 稀疏 TIN 与规则 DEM 栅格（\(H[m,n]\)）；
+- 冬季时段的遮阴时间序列 \(S(x,y,t)\) 与光照修正 \(\Xi(x,y,t)\)；
+- CH\(\leftrightarrow\)Sink 的 LoS 图与损耗参数场；
+- ENU 坐标下的节点/簇/湖泊矢量底图。
+上述产物直接驱动仿真与可视化，并与第~\ref{subsec:node_model} 节的 PV 与上行链路模型无缝对接。
+
+\subsubsection{簇内场景建模：近场 MRC + RIS 聚焦}\label{sec:cluster_scene}
+\paragraph{几何与错位。} 对簇 \(k\) 内任意节点 \(u\) 与 CH 的几何关系用 \(d_{k,u},\,\Delta z_{k,u},\,\theta_{k,u}\) 表征，互感 \(M_{k,u}=M(d_{k,u},\Delta z_{k,u},\theta_{k,u})\)，耦合系数 \(k_{k,u}=M_{k,u}/\sqrt{L_u L_k}\)，效率 \(\eta_{k,u}^{\text{MRC}}\) 由前述公式给出。我们将“错位”视作 \(\boldsymbol{\delta}_{k,u}=(\delta x,\delta y,\delta z,\delta\theta)\) 的随机扰动，其分布由部署与环境振动决定。
+
+\paragraph{RIS 对远距与错位的补偿。} 在 CH 周边布置近场 RIS/超表面，作为“能量透镜”提升远距离（较大 \(d_{k,u}\)）节点的有效 \(k_{k,u}\) 并降低 \(\eta_{k,u}^{\text{MRC}}\) 对 \(\boldsymbol{\delta}_{k,u}\) 的敏感度。我们以查表/仿真函数 \(\mathcal{F}_{\text{RIS}}(d,\Delta z,\theta;\,\text{结构},\text{频率})\) 对效率进行修正：
+\begin{equation}
+\eta_{k,u}^{\text{MRC}}\;\leftarrow\;\eta_{k,u}^{\text{MRC}}\cdot \mathcal{F}_{\text{RIS}}(d_{k,u},\Delta z_{k,u},\theta_{k,u}),\quad \partial\eta/\partial\boldsymbol{\delta}\ \text{降低}.
+\end{equation}
+其中“降低偏导”表示错位鲁棒性的提升。
+
+\paragraph{图示。} 图~\ref{fig:mrc_cluster} 展示了簇内场景：RIS 位于 CH 附近，通过重塑近场磁场，使得远处或偏移/倾斜的节点在 RIS 的聚焦下仍能实现较高的输能效率。该图对应局部层（cluster-level）的建模与设计。
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=.95\linewidth]{sections/figures/mrc.png}
+  \vspace{-0.4em}
+  \caption{簇内场景建模示意：RIS 增强远处节点的 MRC 传能效率，并降低线圈不对齐（平移/倾斜）造成的效率损失。}
+  \label{fig:mrc_cluster}
+\end{figure*}
+
+\paragraph{调度与约束。} 在帧 \(T_f\) 内，簇内送能时隙集合 \(\{t_{u\to k}\}\) 需满足 \(\sum_{u\in\mathcal{U}_k} t_{u\to k} \le T_f- t_{\text{comm}}-t_{\text{comp}}\)。在 RIS 配置比特与更新速率受限下，选择有限个模式实现对“远距优先/错位补偿”的策略化支持。
+
+\paragraph{小结。} 本节将场景建模拆分为全局（地形、光照、可见性）与簇内（近场几何、RIS 聚焦、调度），并在簇内侧引入基于 RIS 的远距增强与错位鲁棒性建模。

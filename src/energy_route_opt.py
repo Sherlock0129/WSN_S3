@@ -101,11 +101,13 @@ def path_eta(path_nodes, id2enu, etacfg, ris_passive_gain):
     eta = 1.0
     ris_hops = 0
     for a, b in zip(path_nodes[:-1], path_nodes[1:]):
+        if a not in id2enu or b not in id2enu:
+            return 0.0
         pa = id2enu[a]
         pb = id2enu[b]
         d = float(np.linalg.norm(pa[:2] - pb[:2]))
         eta *= efficiency(d, etacfg)
-        # count passive RIS hop when the intermediate node is RIS/PIS (source node of edge)
+        # Passive RIS directional gain per RIS hop
         if a.upper().startswith('RIS') or a.upper().startswith('PIS'):
             ris_hops += 1
     if ris_hops > 0:
@@ -129,7 +131,6 @@ def run():
         enu = geodetic_to_enu(d['lon'], d['lat'], d['h'], lon0, lat0, h0)
         sink_pts_enu.append({**d, 'enu': enu})
 
-    # Index
     id2enu = {p['id']: p['enu'] for p in sink_pts_enu}
 
     # Alias: RIS1 == PIS1 if RIS1 not present
@@ -153,61 +154,44 @@ def run():
             'donor_surplus': {'RF1': 1200.0, 'RF2': 1200.0},
             'recipient_demand': {'RF3': 900.0, 'RF4': 900.0, 'RF5': 900.0, 'RF6': 900.0},
             'efficiency': {'model': 'exp', 'base': 0.6, 'alpha': 2e-4, 'min_eta': 1e-3},
-            'ris_passive_gain': 1.2,
-            'ris_surplus': {'default': 500.0}
+            'ris_passive_gain': 1.0
         }
         save_json('src/energy_config.json', cfg)
 
     etacfg = cfg.get('efficiency', {})
-    ris_passive_gain = float(cfg.get('ris_passive_gain', 1.2))
+    ris_passive_gain = float(cfg.get('ris_passive_gain', 1.0))
 
-    # classify
     donors = ['RF1','RF2']
     recipients = ['RF3','RF4','RF5','RF6']
-    ris_nodes = [nid for nid in id2enu.keys() if nid.upper().startswith('RIS') or nid.upper().startswith('PIS')]
 
-    # Supplies/demands
     donor_supply = {d: float(cfg.get('donor_surplus', {}).get(d, 0.0)) for d in donors}
     rec_demand = {r: float(cfg.get('recipient_demand', {}).get(r, 0.0)) for r in recipients}
-    ris_budget_cfg = cfg.get('ris_surplus', {'default': 0.0})
-    default_ris_budget = float(ris_budget_cfg.get('default', 0.0))
-    ris_supply = {r: float(ris_budget_cfg.get(r, default_ris_budget)) for r in ris_nodes}
 
-    # Build donor->recipient paths restricted to graph
+    # Build donor->recipient paths restricted to graph (passive only)
     donor_paths = {}
     for d in donors:
         for r in recipients:
             path_nodes = shortest_path(adj, d, r)
             if path_nodes:
                 eta = path_eta(path_nodes, id2enu, etacfg, ris_passive_gain)
-                donor_paths[(d, r)] = {'path': path_nodes, 'eta': eta}
+                if eta > 0:
+                    donor_paths[(d, r)] = {'path': path_nodes, 'eta': eta}
 
-    # RIS active edges only if edge ends at a recipient
-    ris_edges = []  # tuples (ris, rec)
-    for (u, v) in edges:
-        if v in recipients and (u.upper().startswith('RIS') or u.upper().startswith('PIS')):
-            ris_edges.append((u, v))
-
-    # Build LP
-    I = list(donor_paths.keys())  # donor-recipient pairs with a path
-    K = list(ris_edges)           # ris->recipient active edges
-
+    I = list(donor_paths.keys())
     nI = len(I)
-    nK = len(K)
 
-    # variables: x_i for donor path delivered, y_k for ris edge delivered
-    # objective: maximize sum(x_i) + sum(y_k)
-    c = np.zeros(nI + nK)
-    c[:nI] = -1.0
-    c[nI:] = -1.0
+    if nI == 0:
+        raise RuntimeError('No donor-to-recipient paths found using the provided routes and available nodes.')
+
+    # LP: variables x_i (received via donor passive paths). Maximize sum x_i
+    c = -np.ones(nI)
 
     A_ub = []
     b_ub = []
 
-    # donor budgets: sum_i x_i / eta_i for those with donor d
-    donors_set = donors
-    for d in donors_set:
-        row = np.zeros(nI + nK)
+    # donor budgets on transmit energy
+    for d in donors:
+        row = np.zeros(nI)
         for idx, (dd, rr) in enumerate(I):
             if dd == d:
                 eta = max(donor_paths[(dd, rr)]['eta'], 1e-9)
@@ -215,50 +199,32 @@ def run():
         A_ub.append(row)
         b_ub.append(donor_supply.get(d, 0.0))
 
-    # RIS budgets: sum_k y_k / eta_edge <= ris_supply
-    for ris in ris_nodes:
-        row = np.zeros(nI + nK)
-        for kk, (u, v) in enumerate(K):
-            if u == ris:
-                pa = id2enu[u]
-                pb = id2enu[v]
-                d = float(np.linalg.norm(pa[:2] - pb[:2]))
-                eta = max(efficiency(d, etacfg), 1e-9)
-                row[nI + kk] = 1.0 / eta
-        if np.any(row != 0):
-            A_ub.append(row)
-            b_ub.append(ris_supply.get(ris, 0.0))
-
-    # recipient caps: sum donor_paths to r + sum ris_edges to r <= demand_r
+    # recipient caps
     for r in recipients:
-        row = np.zeros(nI + nK)
+        row = np.zeros(nI)
         for idx, (dd, rr) in enumerate(I):
             if rr == r:
                 row[idx] = 1.0
-        for kk, (u, v) in enumerate(K):
-            if v == r:
-                row[nI + kk] = 1.0
         A_ub.append(row)
         b_ub.append(rec_demand.get(r, 0.0))
 
-    bounds = [(0.0, None)] * (nI + nK)
+    bounds = [(0.0, None)] * nI
     res = linprog(c, A_ub=np.array(A_ub), b_ub=np.array(b_ub), bounds=bounds, method='highs')
     if res.status != 0:
         raise RuntimeError(f"LP failed: {res.message}")
 
     x = res.x
     donor_delivered = {I[idx]: x[idx] for idx in range(nI)}
-    ris_delivered = {K[kk]: x[nI + kk] for kk in range(nK)}
 
     # Prepare outputs
     plan = {
-        'mode': 'route_constrained_max_coverage',
+        'mode': 'route_constrained_passive_only',
         'routes': {'route1': route1, 'route2': route2, 'ridge': ridge},
+        'edges_used': edges,
         'donor_paths': {f'{d}->{r}': {'path': donor_paths[(d,r)]['path'], 'eta': donor_paths[(d,r)]['eta'], 'delivered': donor_delivered.get((d,r), 0.0)} for (d,r) in I},
-        'ris_edges': {f'{u}->{v}': {'eta': float(efficiency(float(np.linalg.norm(id2enu[u][:2]-id2enu[v][:2])), etacfg)), 'delivered': ris_delivered.get((u,v), 0.0)} for (u,v) in K},
         'donor_supply': donor_supply,
-        'ris_supply': ris_supply,
         'recipient_demand': rec_demand,
+        'ris_passive_gain': ris_passive_gain,
         'objective': float(res.fun)
     }
     save_json('route_energy_plan.json', plan)
@@ -280,13 +246,14 @@ def run():
                                  line=dict(color='rgba(50,120,180,0.6)', width=1),
                                  fillcolor=palette[i % len(palette)], opacity=0.35))
 
-    # Draw all route edges faintly
+    # Draw route edges (as provided)
     for (u, v) in edges:
-        pa, pb = id2enu[u], id2enu[v]
-        fig.add_trace(go.Scatter(x=[pa[0], pb[0]], y=[pa[1], pb[1]], mode='lines',
-                                 line=dict(width=1, color='rgba(120,120,120,0.4)'), showlegend=False))
+        if u in id2enu and v in id2enu:
+            pa, pb = id2enu[u], id2enu[v]
+            fig.add_trace(go.Scatter(x=[pa[0], pb[0]], y=[pa[1], pb[1]], mode='lines',
+                                     line=dict(width=1, color='rgba(120,120,120,0.4)'), showlegend=False))
 
-    # Nodes
+    # Nodes (donor/recipient/RIS)
     def add_node(nid, symbol, color, name):
         p = id2enu.get(nid)
         if p is not None:
@@ -297,8 +264,11 @@ def run():
         add_node(d, 'square', '#2ca02c', f'{d} (donor)')
     for r in recipients:
         add_node(r, 'circle', '#d62728', f'{r} (recipient)')
-    for rid in ris_nodes:
-        add_node(rid, 'triangle-up', '#1f77b4', f'{rid} (RIS)')
+    # RIS along sequences
+    for seq in sequences:
+        for n in seq:
+            if n not in donors and n not in recipients:
+                add_node(n, 'triangle-up', '#1f77b4', f'{n} (RIS)')
 
     # Donor path flows (red)
     if donor_delivered:
@@ -308,31 +278,20 @@ def run():
                 continue
             path_nodes = donor_paths[(d, r)]['path']
             for a, b in zip(path_nodes[:-1], path_nodes[1:]):
-                pa, pb = id2enu[a], id2enu[b]
-                fig.add_trace(go.Scatter(x=[pa[0], pb[0]], y=[pa[1], pb[1]], mode='lines',
-                                         line=dict(width=2 + 6 * (val / max_d), color='rgba(200,50,50,0.85)'),
-                                         showlegend=False))
+                if a in id2enu and b in id2enu:
+                    pa, pb = id2enu[a], id2enu[b]
+                    fig.add_trace(go.Scatter(x=[pa[0], pb[0]], y=[pa[1], pb[1]], mode='lines',
+                                             line=dict(width=2 + 6 * (val / max_d), color='rgba(200,50,50,0.85)'),
+                                             showlegend=False))
 
-    # RIS active flows (blue dashed)
-    if ris_delivered:
-        max_r = max(ris_delivered.values()) if ris_delivered else 1.0
-        for (u, v), val in ris_delivered.items():
-            if val <= 1e-6:
-                continue
-            pa, pb = id2enu[u], id2enu[v]
-            fig.add_trace(go.Scatter(x=[pa[0], pb[0]], y=[pa[1], pb[1]], mode='lines',
-                                     line=dict(width=2 + 6 * (val / max_r), color='rgba(30,120,200,0.85)', dash='dot'),
-                                     showlegend=False))
-
-    fig.update_layout(title='Route-constrained Energy Flow (donor paths + RIS active edges)',
+    fig.update_layout(title='Route-constrained Energy Flow (Passive RIS only)',
                       xaxis=dict(title='X (m)', scaleanchor='y', scaleratio=1),
                       yaxis=dict(title='Y (m)'), legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0),
                       margin=dict(l=40, r=40, t=80, b=40))
 
     fig.write_html('route_energy_map.html')
-    print('Saved: route_energy_plan.json and route_energy_map.html')
+    print('Saved: route_energy_plan.json and route_energy_map.html (passive only)')
 
 
 if __name__ == '__main__':
     run()
-

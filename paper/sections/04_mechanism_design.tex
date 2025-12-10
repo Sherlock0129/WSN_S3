@@ -2,16 +2,152 @@
 
 \textbf{多RIS协同能量路由系统（能量互联网框架）。} 将RIS面板视为能量路由网络中的主动节点，构建类似数据网络的能量互联网（Energy Routing Network）。系统通过以下机制实现多跳反射链路和能量路径选择：
 
-\textbf{(1) 多RIS协作RF能量路由。} 构建基于RIS的多跳反射能量路径，实现跨山体、跨障碍物的长距离能量传输。具体包括：(i) \textbf{地形感知路由图构建：}集成数字高程模型（DEM）数据，构建包含RIS节点、能量源和簇头的路由图，考虑地形遮挡和阴影效应；(ii) \textbf{多跳路径优化：}采用动态规划、图搜索或基于ADMM的联合相位-路径优化算法，选择最优RIS反射序列，最大化接收功率或平衡多簇能量分配；(iii) \textbf{自适应重配置：}支持RIS面板的动态增删和相位重配置，适应环境变化（如植被生长、部分遮挡）和网络扩展需求。
+\textbf{(1) 多RIS协作RF能量路由。} 构建基于RIS的多跳反射能量路径，实现跨山体、跨障碍物的长距离能量传输。具体包括：(i) \textbf{地形感知路由图构建：}集成数字高程模型（DEM）数据，构建包含RIS节点、能量源和簇头的路由图，考虑地形遮挡和阴影效应；(ii) \textbf{多跳路径优化：}采用动态规划、图搜索或基于凸近似的联合相位-路径优化思想，选择高增益RIS反射序列，最大化接收功率或平衡多簇能量分配；(iii) \textbf{自适应重配置：}支持RIS面板的动态增删和相位重配置，适应环境变化（如植被生长、部分遮挡）和网络扩展需求。
 
-\textbf{(2) RIS增强MRC近场能量透镜。} 利用可编程超表面重塑近场磁场分布，增强磁耦合效率并提升对线圈错位的鲁棒性。具体包括：(i) \textbf{磁场聚焦设计：}通过HFSS/CST电磁仿真，设计RIS单元几何和周期性，实现近场磁场聚焦；(ii) \textbf{错位补偿：}分析耦合系数$k$、品质因数$Q$和效率$\eta$在错位情况下的变化，设计自适应RIS控制模式补偿空间漂移；(iii) \textbf{动态调整：}根据传感器节点位置不确定性，实时调整RIS相位配置，维持高效能量传输。
+\textbf{(2) RIS增强MRC近场能量透镜。} 利用可编程超表面重塑近场磁场分布，增强磁耦合效率并提升对线圈错位的鲁棒性。具体包括：(i) \textbf{磁场聚焦设计：}通过电磁仿真，设计RIS单元几何和周期性，实现近场磁场聚焦；(ii) \textbf{错位补偿：}分析耦合系数$k$、品质因数$Q$和效率$\eta$在错位情况下的变化，设计自适应RIS控制模式补偿空间漂移；(iii) \textbf{动态调整：}根据传感器节点位置不确定性，实时调整RIS相位配置，维持高效能量传输。
 
-\textbf{(3) 跨层能量流协调。} 构建统一的RF--RIS--MRC--WSN能量流图，实现端到端能量优化。具体包括：(i) \textbf{能量流图建模：}将系统建模为多层级能量流图，定义每层的能量约束（功率预算、RIS配置资源、硬件限制）；(ii) \textbf{联合优化算法：}设计跨层优化算法，联合分配RF和MRC层之间的功率，选择RIS能量路由，并根据流量负载和剩余能量调度簇级功率分配；(iii) \textbf{信息-能量协同：}通过AOEI机制将能量状态信息新鲜度与能量路由决策耦合，实现信息驱动的能量调度。
+\textbf{(3) 跨层能量流协调。} 构建统一的RF--RIS--MRC--WSN能量流图，实现端到端能量优化。具体包括：(i) \textbf{能量流图建模：}将系统建模为多层级能量流图，定义每层的能量约束（功率预算、RIS配置资源、硬件限制）；(ii) \textbf{联合优化算法：}设计跨层优化算法，联合分配RF和MRC层之间的功率，选择RIS能量路由，并根据流量负载与剩余能量需求感知进行簇级功率分配；(iii) \textbf{反馈与轻量控制：}采用低开销的能量状态摘要与周期性校准，避免过多控制开销。
 
-\textbf{(4) AOEI优先机制。} 动态设定能量信息年龄阈值，使新鲜度不足的节点优先上报，将信息新鲜度与输能紧迫度耦合，并沿活跃能量路径插入更新。
+\textbf{(4) 基于DEM与LoS约束的RIS几何选址与机会路径构建（解决问题一）。} 在不改变既定通信时程的前提下（簇成员每小时上报到CH，CH每日回传至sink），以纯数学形式刻画RIS选址与多跳反射链路优化：定义候选集合、视域与走廊约束，构建1--5跳的级联功率最大化问题，以得到用于每日回传段的稳健几何路径。
 
-\textbf{(5) 自适应Lyapunov时长规划（ALDP）。} 基于Lyapunov优化规划每时隙RF多跳与MRC充能时长，稳定AOEI与能量队列，同时最大化接收功率。
+% ===================== 数学化的RIS选址与机会路径 =====================
+\subsection{数学化的RIS选址与机会路径：固定时程下的跨地形连通}
+\label{subsec:ris_placement_mech}
 
-\textbf{(6) 能量高效传输机会路由（EETOR）。} 选择多跳RIS路径同时输能并携带ESI，权衡路径损耗、反射增益与AOEI紧迫度，支持RIS面板的增删与重配置。
+% 图：RIS分布图（数学化选址的落地结果）
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.9\linewidth]{sections/figures/ris_distribution.png}
+  \caption{数学化RIS选址的几何结果：在DEM与LoS约束下对若干CH/\,sink对进行单/双RIS与多跳束搜索，得到的部署方案与湖泊地理背景（单位：m）。}
+  \label{fig:ris_dist}
+\end{figure*}
 
-\textbf{协同关系。} 多RIS协作路由构建能量互联网骨干，RIS增强MRC提供簇内高效充能，跨层协调实现端到端优化，AOEI、ALDP、EETOR三机制绑定信息新鲜度与能量路由，共同提升系统寿命、能量均衡和工程实用性。
+% 修正浮动环境错误和大括号匹配
+% ==================== 数学建模段落继续 ====================
+
+\paragraph{地形、节点与视域}
+令地形域为$\Omega\subset\mathbb{R}^2$，高程映射为$H: \Omega\to\mathbb{R}_{+}$。对任一点$(x,y)\in\Omega$，其地表点为$(x,y,H(x,y))$。设源簇头（CH）与目标（另一CH或sink）位置分别为
+\begin{equation}
+\begin{aligned}
+\mathbf{p}_\mathrm{s} &= (x_\mathrm{s},y_\mathrm{s},H(x_\mathrm{s},y_\mathrm{s})+h_\mathrm{s}),\\
+\mathbf{p}_\mathrm{d} &= (x_\mathrm{d},y_\mathrm{d},H(x_\mathrm{d},y_\mathrm{d})+h_\mathrm{d})
+\end{aligned}
+\end{equation}
+其中$h_\mathrm{s},h_\mathrm{d}>0$为天线/节点安装高。RIS安装高度为常数$h_\mathrm{RIS}>0$，对$(x,y)\in\Omega$，对应候选安装点为$\mathbf{r}(x,y)=(x,y,H(x,y)+h_\mathrm{RIS})$。
+
+定义视域指示函数$\mathsf{L}(\mathbf{a},\mathbf{b})\in\{0,1\}$：若线段$\overline{\mathbf{a}\mathbf{b}}$在任意参数$\tau\in[0,1]$处满足
+\begin{equation}
+\begin{aligned}
+(1-\tau)\,z_{\mathbf{a}}+\tau\,z_{\mathbf{b}} &> H\!\big((1-\tau)\,x_{\mathbf{a}}+\tau\,x_{\mathbf{b}},\,(1-\tau)\,y_{\mathbf{a}}+\tau\,y_{\mathbf{b}}\big)+\varepsilon,
+\end{aligned}
+\end{equation}
+则$\mathsf{L}(\mathbf{a},\mathbf{b})=1$，否则为$0$；$\varepsilon\ge 0$为净空裕度。源/目的视域集合定义为
+\begin{equation}
+\begin{aligned}
+\mathcal{V}_\mathrm{s} &= \{(x,y)\in\Omega:\ \mathsf{L}(\mathbf{p}_\mathrm{s},\mathbf{r}(x,y))=1\},\\
+\mathcal{V}_\mathrm{d} &= \{(x,y)\in\Omega:\ \mathsf{L}(\mathbf{r}(x,y),\mathbf{p}_\mathrm{d})=1\}.
+\end{aligned}
+\end{equation}
+
+\paragraph{走廊与栅格候选}
+令$\Pi(\mathbf{p}_\mathrm{s},\mathbf{p}_\mathrm{d})$为连接源/目的在$xy$平面的线段，走廊半宽为$W>0$。走廊集合定义为
+\begin{equation}
+\mathcal{C}=\big\{(x,y)\in\Omega:\ \operatorname{dist}\big((x,y),\Pi(\mathbf{p}_\mathrm{s},\mathbf{p}_\mathrm{d})\big)\le W\big\}.
+\end{equation}
+候选集合可取为$\mathcal{S}=\mathcal{C}\cap\Omega$的均匀采样子集，或直接以$\mathcal{V}_\mathrm{s}\cap\mathcal{V}_\mathrm{d}$作为首选候选域。
+
+\paragraph{传播增益模型}
+设载波波长$\lambda$，自由空间段增益
+\begin{equation}
+ g(\mathbf{a},\mathbf{b})=\Big(\tfrac{\lambda}{4\pi\lVert\mathbf{a}-\mathbf{b}\rVert}\Big)^{2}\,\Xi(\mathbf{a},\mathbf{b}),
+\end{equation}
+其中$\Xi(\mathbf{a},\mathbf{b})\in(0,1]$可表征阴影/散射等有效折减（在LoS段可取$\Xi\approx 1$）。对单块$N$单元的相位可控RIS，在相位完全对齐的上界近似下，单跳反射的等效增益写作
+\begin{equation}
+\begin{aligned}
+G_{1}(\mathbf{p}_\mathrm{s},\mathbf{r},\mathbf{p}_\mathrm{d}) &= \kappa_{1}\,g(\mathbf{p}_\mathrm{s},\mathbf{r})\,g(\mathbf{r},\mathbf{p}_\mathrm{d}),\\
+\kappa_{1} &= \rho\,N^{2},\quad \rho\in(0,1]
+\end{aligned}
+\end{equation}
+多跳$\,m\in\mathbb{N}$时（$m\ge 1$），令$\mathbf{u}_{0}=\mathbf{p}_\mathrm{s},\ \mathbf{u}_{m+1}=\mathbf{p}_\mathrm{d},\ \mathbf{u}_{\ell}=\mathbf{r}_{\ell}$为第$\ell$块RIS位置，则
+\begin{equation}
+\begin{aligned}
+G_{m}(\mathbf{u}_{0:m+1}) &= \kappa_{m}\,\prod_{\ell=0}^{m} g(\mathbf{u}_{\ell},\mathbf{u}_{\ell+1}),\\
+\kappa_{m} &> 0
+\end{aligned}
+\end{equation}
+汇集了阵元规模、相位合并与硬件效率的上界常数。若源发射功率为$P_{\mathrm{t}}$，目的接收功率为$P_{\mathrm{r}}=P_{\mathrm{t}}\,G_{m}(\cdot)$。
+
+\paragraph{单RIS优化（视域交集 / 走廊约束）}
+视域交集模型：
+\begin{equation}
+\max_{(x,y)\in\mathcal{V}_\mathrm{s}\cap\mathcal{V}_\mathrm{d}}\ \ P_{\mathrm{t}}\,G_{1}\big(\mathbf{p}_\mathrm{s},\mathbf{r}(x,y),\mathbf{p}_\mathrm{d}\big).
+\end{equation}
+走廊约束模型：
+\begin{equation}
+\begin{aligned}
+\max_{(x,y)\in\mathcal{C}}\ \ &P_{\mathrm{t}}\,G_{1}\big(\mathbf{p}_\mathrm{s},\mathbf{r}(x,y),\mathbf{p}_\mathrm{d}\big)\\
+\text{s.t.}\ \ &\mathsf{L}(\mathbf{p}_\mathrm{s},\mathbf{r}(x,y))=\mathsf{L}(\mathbf{r}(x,y),\mathbf{p}_\mathrm{d})=1.
+\end{aligned}
+\end{equation}
+
+\paragraph{双RIS优化（两端视域 + RIS间LoS）}
+令$\mathcal{S}_\mathrm{s}\subseteq\mathcal{V}_\mathrm{s}$、$\mathcal{S}_\mathrm{d}\subseteq\mathcal{V}_\mathrm{d}$为从两端视域中选取的候选子集，则
+\begin{equation}
+\begin{aligned}
+\max_{\mathbf{r}_{1}\in\mathcal{S}_\mathrm{s},\,\mathbf{r}_{2}\in\mathcal{S}_\mathrm{d}}\ \ &P_{\mathrm{t}}\,\kappa_{2}\,g(\mathbf{p}_\mathrm{s},\mathbf{r}_{1})\,g(\mathbf{r}_{1},\mathbf{r}_{2})\,g(\mathbf{r}_{2},\mathbf{p}_\mathrm{d})\\
+\text{s.t.}\ \ &\mathsf{L}(\mathbf{r}_{1},\mathbf{r}_{2})=1.
+\end{aligned}
+\end{equation}
+
+\paragraph{多RIS链优化（3--5跳）}
+给定最大跳数$m_{\max}\in\{3,4,5\}$，定义可行序列集合
+\begin{equation}
+\mathcal{P}_{m}=\Big\{(\mathbf{r}_{1},\ldots,\mathbf{r}_{m}):\ \mathbf{r}_{\ell}\in\mathcal{C},\ \mathsf{L}(\mathbf{u}_{\ell-1},\mathbf{u}_{\ell})=1,\ \ell=1,\ldots,m+1\Big\},
+\end{equation}
+其中$\mathbf{u}_{0}=\mathbf{p}_\mathrm{s}$、$\mathbf{u}_{\ell}=\mathbf{r}_{\ell}$、$\mathbf{u}_{m+1}=\mathbf{p}_\mathrm{d}$。则多跳优化写作
+\begin{equation}
+\max_{1\le m\le m_{\max}}\ \ \max_{(\mathbf{r}_{1:m})\in\mathcal{P}_{m}}\ \ P_{\mathrm{t}}\,G_{m}(\mathbf{u}_{0:m+1}).
+\end{equation}
+如需降低搜索规模，可在$\mathcal{C}$内定义连续评分函数
+\begin{equation}
+\begin{aligned}
+ s(x,y)=\ &\alpha\,H(x,y)-\beta\,\operatorname{dist}\big((x,y),\Pi(\mathbf{p}_\mathrm{s},\mathbf{p}_\mathrm{d})\big)\\
+ &{}-\gamma\,\lVert(x,y)-(x_\mathrm{s},y_\mathrm{s})\rVert,
+\end{aligned}
+\end{equation}
+用以选取候选子域（例如取$\mathcal{S}=\{(x,y): s(x,y)\text{居于前}\,K\}$），随后在$\mathcal{S}$上求解上述极大化问题。
+
+\paragraph{与固定通信时程的耦合}
+令$\mathcal{T}_{\mathrm{h}}$为“每小时簇内上报”的时间集合，$\mathcal{T}_{\mathrm{d}}$为“每日回传”的时间集合。定义几何路径选择策略$\pi:\mathcal{T}_{\mathrm{d}}\to\bigcup_{m\le m_{\max}}\mathcal{P}_{m}$，使得在每个$t\in\mathcal{T}_{\mathrm{d}}$，
+\begin{equation}
+\pi(t)\in\arg\max_{(\mathbf{r}_{1:m})\in\bigcup_{m\le m_{\max}}\mathcal{P}_{m}}\ \ P_{\mathrm{t}}\,G_{m}(\mathbf{u}_{0:m+1}),
+\end{equation}
+并在$t$时隙内按$\pi(t)$对应的几何链路完成CH$\to$目标的回传。注意该策略不影响$\mathcal{T}_{\mathrm{h}}$上的簇内传输，仅作用于每日回传段。
+
+\paragraph{复杂度与可解性（上界）}
+在离散候选集$|\mathcal{S}|=N$下，单/走廊模型为$\mathcal{O}(N)$；双RIS在$\mathcal{S}_\mathrm{s}\times$\,$\mathcal{S}_\mathrm{d}$上为$\mathcal{O}(K^{2})$（$K=|\mathcal{S}_\mathrm{s}|=|\mathcal{S}_\mathrm{d}|$）；多RIS的穷举上界为$\sum_{m\le m_{\max}}\mathcal{O}(N^{m})$，实际可通过候选裁剪与视域约束显著降低到多项式量级的近似求解。
+
+\textbf{协同关系。} 多RIS协作路由构建能量互联网骨干，RIS增强MRC提供簇内高效充能，跨层协调实现端到端优化；本节的数学化几何选址与机会路径机制直接服务于固定回传时程，解决CH$\to$sink/目标的跨地形连通问题，并与簇内每小时上报解耦。
+
+% ===================== RIS 增强 MRC =====================
+\subsection{RIS增强MRC：近场透镜与鲁棒耦合}\label{subsec:ris_mrc}
+为将RIS用于簇内无线充能，我们采用“RIS近场透镜”思想对线圈-线圈的磁耦合进行增强：
+\begin{itemize}
+  \item \textbf{近场聚焦：}在工作频段$\omega$下，设计RIS等效表面阻抗$Z_{\mathrm{s}}(\phi)$，使得反射相位满足到接收线圈的等相位球面叠加，提升磁场强度$|\mathbf{H}|$与耦合系数$k$。
+  \item \textbf{错位补偿：}把线圈横向/纵向偏移建模为$\Delta x,\Delta z$扰动，基于小扰动灵敏度$\partial \eta/\partial \Delta$在线/离线调整$Z_{\mathrm{s}}$表面编程，以维持效率$\eta$。
+  \item \textbf{能量-信息共存：}充能时隙采用占空比调度，保持簇内汇聚与测量上报信道的正交或低互扰（如TDMA）。
+\end{itemize}
+
+% ===================== 网络层设计 =====================
+\subsection{网络层设计：定时上报与能量路由}\label{subsec:net_design}
+结合地形感知的RIS选址结果，网络层按固定的轻量时程运行：
+\begin{itemize}
+  \item \textbf{簇内上报（每小时）：}传感器$\to$CH采用TDMA/CSMA小包上报；CH做数据融合并缓存；该阶段不依赖RIS几何路径。
+  \item \textbf{每日回传（一次/日）：}在$\mathcal{T}_{\mathrm{d}}$时隙，按图~\ref{fig:ris_dist} 所示的几何路径从CH沿RIS链路回传至sink/目标；路径由第~\ref{subsec:ris_placement_mech} 的最优化得到。
+  \item \textbf{无线传能逻辑：}白天RF1/2（山阳面）优先作为供能端，沿几何路径或就近RIS对RF3--RF6（山阴面）补能；能量分配遵循“最大覆盖/最低保障”策略（可选），并受供能预算约束。
+  \item \textbf{自适应修正：}周期性测量LoS与阴影变化（如雨雾/植被），当链路衰减超阈值时触发重算候选或切换到备用路径。
+\end{itemize}
+
+\paragraph{与第3章的衔接}
+- 全局层：第~\ref{sec:carrauntoohil} 节给出 DEM/视域建模与参数来源；相关几何机制以该模型为输入；
+- 簇内层：第~\ref{sec:cluster_scene} 节给出 RIS 对 MRC 的增益建模，可在局部层用于远距与错位补偿（与全局层互补）。
