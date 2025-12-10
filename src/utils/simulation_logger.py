@@ -9,7 +9,7 @@ class SimulationLogger:
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"log_{timestamp}.txt"
+        filename = f"log_{timestamp}.md"
         self.log_file_path = os.path.join(log_dir, filename)
         
         # In-memory buffer to store log strings
@@ -52,10 +52,10 @@ class SimulationLogger:
             log_str += "- **Result**: No viable energy path found or no power transferred.\n"
         self.log_buffer.append(log_str)
 
-    def log_energy_transfer(self, rf_target, rf_sent_energy_j, rf_delivered_energy_j, mrc_entries, sensor_tx_consumption=None):
+    def log_energy_transfer(self, rf_target, rf_sent_energy_j, rf_delivered_energy_j, mrc_entries):
         log_str = "### 3. Energy & Information Flow\n"
         log_str += "#### Energy Flow\n"
-        any_energy_flow = False
+        any_energy = False
         # RF long-range
         if rf_target and (rf_sent_energy_j is not None):
             eta_rf = (rf_delivered_energy_j / rf_sent_energy_j) if rf_sent_energy_j > 0 else 0.0
@@ -63,7 +63,7 @@ class SimulationLogger:
                 f"- RF_TX -> `{rf_target.node_id}`: Sent `{rf_sent_energy_j:.6f}` J, "
                 f"Delivered `{rf_delivered_energy_j:.6f}` J, Efficiency `{eta_rf:.6e}`.\n"
             )
-            any_energy_flow = True
+            any_energy = True
         
         # MRC local transfers
         if mrc_entries:
@@ -76,24 +76,15 @@ class SimulationLogger:
                     f"- `{ch_id}` (MRC) -> cluster nodes: Sent `{sent_j:.6f}` J, "
                     f"Delivered `{delivered_j:.6f}` J, Efficiency `{eta:.6e}`.\n"
                 )
-                any_energy_flow = True
+                any_energy = True
         
-        if not any_energy_flow:
+        if not any_energy:
             log_str += "- No energy transfer in this step.\n"
 
-        log_str += "\n#### Information Flow & Consumption\n"
-        if sensor_tx_consumption:
-            for node_id, consumption in sensor_tx_consumption.items():
-                log_str += f"- Node `{node_id}` -> CH: Sent data, consumed `{consumption:.6f}` J.\n"
-        else:
-            log_str += "- No information flow in this step.\n"
+        log_str += "\n#### Information Flow (Conceptual)\n"
+        log_str += "- Sensor Nodes -> Cluster Heads: Data packets (e.g., sensor readings).\n"
+        log_str += "- Cluster Heads -> Sink: Aggregated data.\n"
 
-        self.log_buffer.append(log_str)
-
-    def log_energy_balancing(self, cluster_id, average_energy, num_nodes):
-        log_str = "### 3a. Energy Balancing Event\n"
-        log_str += f"- **Cluster `{cluster_id}`**: Energy balanced across `{num_nodes}` nodes.\n"
-        log_str += f"- **Result**: All nodes in cluster set to `{average_energy:.4f}` J.\n"
         self.log_buffer.append(log_str)
 
     def log_cluster_energy(self, wsn):

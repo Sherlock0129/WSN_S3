@@ -38,12 +38,11 @@ class EnvConfig:
 # 汇聚节点（主站）配置
 # ==============================================================================
 class SinkConfig:
-    # 汇聚节点（Blackvalley）的位置
-    POSITION = np.array([0, 900, 81])  # x, y, z (单位：米)
+    # 位置改由 sink.csv 提供（此处不再设定坐标）
     # 发射功率（单位：瓦）
     TRANSMIT_POWER_W = 10.0
     # 工作频率（单位：赫兹）
-    FREQUENCY_HZ = 100e6  # 300 MHz（用于灵敏度分析）
+    FREQUENCY_HZ = 100e6  # 频率可在此配置，位置由数据文件提供
     # 天线增益（单位：dBi）
     ANTENNA_GAIN_DBI = 18.0
 
@@ -55,21 +54,13 @@ class RISConfig:
     ENABLE_RIS = True          # 是否启用 RIS 辅助链路
     ENABLE_DOUBLE_HOP = True   # 是否允许双跳（两级 RIS）路由
     ENABLE_PHASE_QUANT = True  # 是否对相位进行量化（3 bit）
-    # RIS面板的数量
-    NUM_RIS_PANELS = 3
-    # 每个RIS面板的单元数量 (例如, 16x16)
+    # RIS 面板电磁参数（位置与数量改由 sink.csv 提供）
     NUM_ELEMENTS_H = 16
     NUM_ELEMENTS_V = 16
     # 相位分辨率 (比特)
     PHASE_RESOLUTION_BITS = 3  # 2^3 = 8个离散相位级别
     # 单元间距与波长的关系
     ELEMENT_SPACING_FACTOR = 0.5  # d = 0.5 * lambda
-    # RIS面板的位置，根据地图估算
-    POSITIONS = [
-        np.array([2250, 1150, 885]), # RIS1 (顶部)
-        np.array([2250, 950, 925]),  # RIS2 (中部)
-        np.array([2250, 600, 866]),  # RIS3 (底部)
-    ]
     # RIS单元的能量收集效率 (如果是自供电)
     HARVESTING_EFFICIENCY = 0.5
 
