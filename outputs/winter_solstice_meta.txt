@@ -1,4 +1,5 @@
-Center latitude (deg): 51.99512456941655
+Center latitude (deg): 51.99459873840814
 Solar declination (deg): -23.44
 Solar noon altitude (deg): 14.565
 Azimuth at noon (deg from North, CW): 180.0
+DEM grid CRS: local-equirect, dx=80.9 m, dy=81.0 m
