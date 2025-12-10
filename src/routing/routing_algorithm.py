@@ -15,7 +15,7 @@ def find_optimal_energy_path(wsn, source, target_ch, max_hops=2):
     Finds the optimal energy path to a target cluster head.
 
     The algorithm explores paths with different numbers of RIS hops:
-    - 0 hops: Direct path from RF Transmitter to Cluster Head.
+    - 0 hops: RF_Tx -> CH (Direct)
     - 1 hop: RF_Tx -> RIS -> CH
     - 2 hops: RF_Tx -> RIS_i -> RIS_j -> CH
 
@@ -25,9 +25,9 @@ def find_optimal_energy_path(wsn, source, target_ch, max_hops=2):
         max_hops (int): The maximum number of RIS panels to use in a path.
 
     Returns:
-        tuple: A tuple containing:
-            - list: The best path found (a list of objects, e.g., [tx, ris1, ch]).
-            - float: The maximum power in Watts delivered via that path.
+        tuple: (best_path, max_power_w)
+            - best_path: list of objects representing the path, e.g. [tx, ris, ch]
+            - max_power_w: maximum power delivered at the target in Watts
     """
     env = wsn.environment
     ris_panels = wsn.ris_panels
@@ -62,22 +62,23 @@ def find_optimal_energy_path(wsn, source, target_ch, max_hops=2):
                 ris_j_as_source.position = ris_j.position
                 ris_j_as_source.get_tx_power_dbm = lambda: 10 * np.log10(power_at_ris_j * 1000)
                 ris_j_as_source.get_reflection_gain = ris_j.get_reflection_gain
-                # Use source's frequency for the cascaded hop approximation
+                ris_j_as_source.frequency_hz = getattr(source, 'frequency_hz', None)
+
+                # Final hop RIS_j -> target_ch (approximation)
                 dist_j_ch = np.linalg.norm(ris_j.position - target_ch.position)
                 if env.check_los(ris_j.position, target_ch.position):
                     final_power_dbm = rf_propagation_model._log_distance_path_loss(
                         ris_j_as_source.get_tx_power_dbm(),
                         ris_j.get_reflection_gain(),
                         target_ch.rf_rx_gain_dbi,
-                        source.frequency_hz,
+                        getattr(source, 'frequency_hz', None) or wsn.rf_transmitter.frequency_hz,
                         dist_j_ch,
-                        True  # 已通过 RIS2→CH 的 LoS 检查
+                        True
                     )
-                    final_power_w = 10**((final_power_dbm - 30) / 10)
+                    final_power_w = 10 ** ((final_power_dbm - 30) / 10)
 
                     if final_power_w > max_power:
                         max_power = final_power_w
                         best_path = [source, ris_i, ris_j, target_ch]
 
     return best_path, max_power
-

@@ -10,22 +10,34 @@ from PIL import Image
 from src.config.simulation_config import EnvConfig
 
 class Environment:
-    def __init__(self):
+    def __init__(self, dem=None, origin_xy=None, resolution=None):
         """
-        Initializes the simulation environment, including terrain model.
+        Initializes the simulation environment.
+        Now DEM is expected to be provided externally (from S3.csv interpolation).
+
+        Args:
+            dem (np.ndarray|None): 2D DEM array (H x W) in meters.
+            origin_xy (tuple|None): (xmin, ymin) world coords corresponding to dem[0,0].
+            resolution (float|None): grid resolution in meters per pixel.
         """
+        # Defaults
         self.width = EnvConfig.AREA_WIDTH
         self.height = EnvConfig.AREA_HEIGHT
-        self.use_terrain = EnvConfig.ENABLE_TERRAIN_MODEL
-        self.resolution = EnvConfig.TERRAIN_RESOLUTION
         self.max_elevation = EnvConfig.TERRAIN_MAX_ELEVATION
-        self.m_per_pixel = None  # 若使用热力图，将在加载时覆盖
         
         self.dem = None
-        if self.use_terrain:
-            loaded = self._load_heightmap_if_available()
-            if not loaded:
-                self._generate_terrain()
+        self.origin_xy = None
+        self.resolution = None
+        self.use_terrain = False
+
+        if dem is not None and origin_xy is not None and resolution is not None:
+            self.dem = np.array(dem, dtype=float)
+            self.origin_xy = (float(origin_xy[0]), float(origin_xy[1]))
+            self.resolution = float(resolution)
+            self.use_terrain = True
+            H, W = self.dem.shape
+            self.width = W * self.resolution
+            self.height = H * self.resolution
 
     def _generate_terrain(self):
         """
@@ -94,13 +106,18 @@ class Environment:
         if not self.use_terrain or self.dem is None:
             return 0
         
-        grid_x = int(x / self.resolution)
-        grid_y = int(y / self.resolution)
+        # Map world (x,y) to DEM indices using origin and resolution
+        ox, oy = self.origin_xy if self.origin_xy is not None else (0.0, 0.0)
+        grid_x = int((x - ox) / self.resolution)
+        grid_y = int((y - oy) / self.resolution)
 
         grid_height, grid_width = self.dem.shape
         if 0 <= grid_x < grid_width and 0 <= grid_y < grid_height:
-            return self.dem[grid_y, grid_x]
-        return 0
+            return float(self.dem[grid_y, grid_x])
+        # Clamp to nearest valid cell if out of bounds
+        grid_x = max(0, min(grid_x, grid_width - 1))
+        grid_y = max(0, min(grid_y, grid_height - 1))
+        return float(self.dem[grid_y, grid_x])
 
     def check_los(self, point1, point2):
         """
