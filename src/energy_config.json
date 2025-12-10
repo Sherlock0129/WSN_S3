@@ -1,0 +1,23 @@
+{
+  "donor_surplus": {
+    "RF1": 1200.0,
+    "RF2": 1200.0
+  },
+  "recipient_demand": {
+    "RF3": 900.0,
+    "RF4": 900.0,
+    "RF5": 900.0,
+    "RF6": 900.0
+  },
+  "efficiency": {
+    "model": "exp",
+    "base": 0.6,
+    "alpha": 0.0002,
+    "min_eta": 0.001
+  },
+  "max_hops": 2,
+  "ris_passive_gain": 1.2,
+  "ris_surplus": {
+    "default": 500.0
+  }
+}

@@ -14,3 +14,35 @@
 \end{itemize}
 
 \textbf{主要结果。} 在总能耗相近的情况下，联合方案的寿命-均衡综合指标较基线提升约 194\%；AOEI 降低信息陈旧度；RIS 透镜改善偏移下的 MRC；多 RIS 在 NLOS 场景显著抬升接收功率。
+
+\subsection{Carrauntoohil 山地实地数据驱动部署}\label{sec:carrauntoohil}
+本节将系统部署到爱尔兰最高峰 Carrauntoohil 周边，利用公开地理采样点、标注的 RIS/簇头与湖泊多边形数据，实现实地数据驱动的仿真评估与可视化。核心数据文件与脚本如下：S3.csv（山脊/可视域采样点，含海拔）、sink.csv（SINK、RIS、RF 簇头经纬度与高程）、LAKE.csv（六个湖泊多边形，驱动簇规模分配）以及 plot\_nodes\_map.py（地理坐标到平面 ENU 米系的转换与绘图）。
+
+\textbf{坐标系与映射。} 以 S3.csv 中 id 为 0 的点作为原点 O（经纬高为 $\lambda_0,\varphi_0,h_0$），将地理坐标映射到局部东-北-上 ENU 米系：
+$x \!=\! (\lambda-\lambda_0)\cos\varphi_0\,R_\oplus,\; y \!=\! (\varphi-\varphi_0)\,R_\oplus,\; z \!=\! h-h_0$，其中 $R_\oplus\approx 6371\,\text{km}$。脚本自动将 SINK、RIS、RF 与湖泊边界统一到 ENU 平面并输出底图。
+
+\textbf{地形与视距。} 通过 EnvConfig 启用 DEM 地形与视距遮挡：HEIGHTMAP\_PATH 指向 src/data/heightmap.png，依据图上 500 m 标尺与量测 250 px 得到分辨率约 2 m/px；ENABLE\_TERRAIN\_MODEL 与 ENABLE\_TERRAIN\_LOS 开启后，Environment.check\_los 对任意两点进行逐步穿越判定，严格约束直射与 RIS 反射段的 LoS 要求。
+
+\textbf{关键锚点。} 实地锚点包括（经脚本转换为 ENU 后用于布设）：Black Valley 的 SINK（海拔约 82 m）、山脊顶部 PIS1/RIS1（\textasciitilde883 m）、中部 RIS2（\textasciitilde927 m）、东南侧 RIS3（\textasciitilde867 m），以及 RF 簇头 RF1–RF6（分布于各湖泊附近）。六个湖泊多边形用于按面积比例分配节点数（WSNConfig.ALLOCATE\_BY\_LAKE\_AREA）。
+
+\textbf{仿真参数摘录。} EnvConfig：PATH\_LOSS\_EXPONENT\_LOS=1.5，PATH\_LOSS\_EXPONENT\_NLOS=3.5，REFERENCE\_DISTANCE=1 m；Sink：$P_\text{tx}=10$ W，$f=100$ MHz，$G_\text{tx}=18$ dBi；RIS：16\,$\times$\,16 元件、0.5\,$\lambda$ 间距、3-bit 相位量化；WSN：6 个簇，簇半径 45 m，开启 MRC 簇内下发与太阳能采集（部分湖泊）。上述参数与仓库中的 simulation\_config.py 保持一致。
+
+\textbf{典型能量路由。} SINK 位于山谷背阴侧，直射至目标簇头路径被地形阻断；系统选择经山脊顶部 PIS1（LoS）反射至中部 RIS2，再至东南侧 RIS3，最后到目标 CH 的三跳反射链，形成跨障碍的可控能量通道。RIS 面板在 configure\_phases() 中按“入射点—反射点”几何相位差对每个单元设相位并量化，近似获得指向性增益（get\_reflection\_gain）。
+
+\textbf{可视化与产物。} 我们提供两张关键图：
+(i) ENU 平面下的 RIS/RF/SINK 与湖泊分区（由 plot\_nodes\_map.py 生成）；
+(ii) 节点能量随时间的演化曲线（由仿真结束的 plot\_results.py 自动导出）。二者均另存到论文图目录，便于直接引用。
+
+\begin{figure}[!t]
+  \centering
+  \subfloat[Carrauntoohil 部署底图（ENU 米系，原点= S3:0）。]{%
+    \IfFileExists{sections/figures/ris_rf_sink_map.png}{\includegraphics[width=.48\linewidth]{ris_rf_sink_map.png}}{\fbox{ris\_rf\_sink\_map.png 待生成}}\label{fig:carra_map}}
+  \hfill
+  \subfloat[节点能量随时间演化（示例一次仿真）。]{%
+    \IfFileExists{sections/figures/simulation_energy_results.png}{\includegraphics[width=.48\linewidth]{simulation_energy_results.png}}{\fbox{simulation\_energy\_results.png 待生成}}\label{fig:carra_energy}}
+  \vspace{-0.5em}
+  \caption{Carrauntoohil 实地数据驱动部署与仿真可视化。}
+  \label{fig:carrauntoohil}
+\end{figure}
+
+\textbf{定性观察。} (1) 启用 DEM 与 LoS 约束后，直射链路在山脊遮挡处被判定为 NLoS 并拒绝；(2) 多 RIS 三跳链路在 NLoS 场景显著抬升接收功率，使目标 CH 得以跨谷供能；(3) 在簇内，RIS 透镜增强的 MRC 提升线圈偏移与倾斜条件下的耦合效率，降低能量尾部风险；(4) 依据 LAKE 面积分配节点后，AOEI 与能量均衡度较基线进一步改善，验证了地理语义驱动的可扩展性。

@@ -1,0 +1,244 @@
+{
+  "mode": "route_constrained_max_coverage",
+  "routes": {
+    "route1": [
+      "RF1",
+      "RIS24",
+      "RIS6",
+      "RIS5",
+      "RIS4",
+      "RIS25",
+      "RIS1",
+      "RIS7",
+      "RIS8",
+      "RF4",
+      "RIS9",
+      "RIS10",
+      "RIS11",
+      "RF5",
+      "RIS12",
+      "RIS13",
+      "RF6"
+    ],
+    "route2": [
+      "RF2",
+      "RIS15",
+      "RIS14",
+      "RIS3",
+      "RIS16",
+      "RIS17",
+      "RF3"
+    ],
+    "ridge": [
+      "RIS3",
+      "RIS19",
+      "RIS20",
+      "RIS21",
+      "RIS2",
+      "RIS22",
+      "RIS23",
+      "RIS1"
+    ]
+  },
+  "donor_paths": {
+    "RF1->RF4": {
+      "path": [
+        "RF1",
+        "RIS24",
+        "RIS6",
+        "RIS5",
+        "RIS4",
+        "RIS25",
+        "RIS1",
+        "RIS7",
+        "RIS8",
+        "RF4"
+      ],
+      "eta": 0.033138462138061014,
+      "delivered": 39.76615456567322
+    },
+    "RF1->RF5": {
+      "path": [
+        "RF1",
+        "RIS24",
+        "RIS6",
+        "RIS5",
+        "RIS4",
+        "RIS25",
+        "RIS1",
+        "RIS7",
+        "RIS8",
+        "RF4",
+        "RIS9",
+        "RIS10",
+        "RIS11",
+        "RF5"
+      ],
+      "eta": 0.006280850061865323,
+      "delivered": 0.0
+    },
+    "RF1->RF6": {
+      "path": [
+        "RF1",
+        "RIS24",
+        "RIS6",
+        "RIS5",
+        "RIS4",
+        "RIS25",
+        "RIS1",
+        "RIS7",
+        "RIS8",
+        "RF4",
+        "RIS9",
+        "RIS10",
+        "RIS11",
+        "RF5",
+        "RIS12",
+        "RIS13",
+        "RF6"
+      ],
+      "eta": 0.0016796636717524242,
+      "delivered": 0.0
+    },
+    "RF2->RF3": {
+      "path": [
+        "RF2",
+        "RIS15",
+        "RIS14",
+        "RIS3",
+        "RIS16",
+        "RIS17",
+        "RF3"
+      ],
+      "eta": 0.09554829677032114,
+      "delivered": 114.65795612438538
+    },
+    "RF2->RF4": {
+      "path": [
+        "RF2",
+        "RIS15",
+        "RIS14",
+        "RIS3",
+        "RIS19",
+        "RIS20",
+        "RIS21",
+        "RIS2",
+        "RIS22",
+        "RIS23",
+        "RIS1",
+        "RIS7",
+        "RIS8",
+        "RF4"
+      ],
+      "eta": 0.007442139253928507,
+      "delivered": 0.0
+    },
+    "RF2->RF5": {
+      "path": [
+        "RF2",
+        "RIS15",
+        "RIS14",
+        "RIS3",
+        "RIS19",
+        "RIS20",
+        "RIS21",
+        "RIS2",
+        "RIS22",
+        "RIS23",
+        "RIS1",
+        "RIS7",
+        "RIS8",
+        "RF4",
+        "RIS9",
+        "RIS10",
+        "RIS11",
+        "RF5"
+      ],
+      "eta": 0.0014105350030640322,
+      "delivered": 0.0
+    },
+    "RF2->RF6": {
+      "path": [
+        "RF2",
+        "RIS15",
+        "RIS14",
+        "RIS3",
+        "RIS19",
+        "RIS20",
+        "RIS21",
+        "RIS2",
+        "RIS22",
+        "RIS23",
+        "RIS1",
+        "RIS7",
+        "RIS8",
+        "RF4",
+        "RIS9",
+        "RIS10",
+        "RIS11",
+        "RF5",
+        "RIS12",
+        "RIS13",
+        "RF6"
+      ],
+      "eta": 0.001,
+      "delivered": 0.0
+    }
+  },
+  "ris_edges": {
+    "RIS8->RF4": {
+      "eta": 0.5837561528781917,
+      "delivered": 291.8780764390958
+    },
+    "RIS11->RF5": {
+      "eta": 0.5752814073037199,
+      "delivered": 287.64070365185995
+    },
+    "RIS13->RF6": {
+      "eta": 0.5792065625196089,
+      "delivered": 289.6032812598044
+    },
+    "RIS17->RF3": {
+      "eta": 0.5811429795817379,
+      "delivered": 290.57148979086895
+    }
+  },
+  "donor_supply": {
+    "RF1": 1200.0,
+    "RF2": 1200.0
+  },
+  "ris_supply": {
+    "PIS1": 500.0,
+    "RIS2": 500.0,
+    "RIS3": 500.0,
+    "RIS4": 500.0,
+    "RIS5": 500.0,
+    "RIS6": 500.0,
+    "RIS7": 500.0,
+    "RIS8": 500.0,
+    "RIS9": 500.0,
+    "RIS10": 500.0,
+    "RIS11": 500.0,
+    "RIS12": 500.0,
+    "RIS13": 500.0,
+    "RIS14": 500.0,
+    "RIS15": 500.0,
+    "RIS16": 500.0,
+    "RIS17": 500.0,
+    "RIS19": 500.0,
+    "RIS20": 500.0,
+    "RIS21": 500.0,
+    "RIS22": 500.0,
+    "RIS23": 500.0,
+    "RIS24": 500.0,
+    "RIS25": 500.0,
+    "RIS1": 500.0
+  },
+  "recipient_demand": {
+    "RF3": 900.0,
+    "RF4": 900.0,
+    "RF5": 900.0,
+    "RF6": 900.0
+  },
+  "objective": -1314.1176618316877
+}

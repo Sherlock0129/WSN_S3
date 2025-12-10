@@ -111,6 +111,9 @@ class SensorNode:
         self.energy_decay_rate = energy_decay_rate
         self.sensor_energy = sensor_energy
 
+        # MRC transmitter properties for energy convergence
+        self.mrc_tx_power_w = SensorNodeConfig.MRC_TX_POWER_W
+
         # 在 __init__ 里：
         self.position_history = [tuple(self.position)]
         
@@ -139,9 +142,9 @@ class SensorNode:
         :param other_node: The other node to calculate distance to.
         :return: The Euclidean distance between the two nodes.
         """
-        x1, y1 = self.position
-        x2, y2 = other_node.position
-        return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        pos1 = np.array(self.position)
+        pos2 = np.array(other_node.position)
+        return np.linalg.norm(pos1 - pos2)
 
 
     def solar_irradiance(self, t):

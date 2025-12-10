@@ -1,172 +1,127 @@
-"""
-Main simulation loop for the Hierarchical WPT System.
-"""
-import os, sys
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+import pandas as pd
 import numpy as np
+import re
+import pyvista as pv
+from scipy.spatial import Delaunay
+import os
 
-from src.network.WSN import WSN
-from src.routing import routing_algorithm
-from src.scheduling import scheduler
-from src.utils import mrc_model
-from src.utils.simulation_logger import SimulationLogger
-from src.config.simulation_config import SimConfig, SensorNodeConfig, WSNConfig
-from src.viz.plot_results import plot_energy_history
+def parse_wkt_point(wkt_string):
+    """Parses a WKT POINT Z string and returns a tuple of (lon, lat, alt)."""
+    match = re.search(r'POINT Z \(([-0-9.]+) ([-0-9.]+) ([-0-9.]+)\)', wkt_string)
+    if match:
+        lon = float(match.group(1))
+        lat = float(match.group(2))
+        alt = float(match.group(3))
+        return lon, lat, alt
+    return None
 
-def run_simulation():
-    """
-    Initializes and runs the main simulation loop.
-    """
-    # 1. Initialize the WSN and Logger
-    wsn = WSN()
-    logger = SimulationLogger()
+def haversine(lon1, lat1, lon2, lat2):
+    """Calculate the great-circle distance between two points on the earth."""
+    R = 6371000  # Earth radius in meters
+    lon1_rad, lat1_rad, lon2_rad, lat2_rad = map(np.radians, [lon1, lat1, lon2, lat2])
+
+    dlon = lon2_rad - lon1_rad
+    dlat = lat2_rad - lat1_rad
+
+    a = np.sin(dlat / 2.0)**2 + np.cos(lat1_rad) * np.cos(lat2_rad) * np.sin(dlon / 2.0)**2
+    c = 2 * np.arcsin(np.sqrt(a))
+    distance = R * c
+    return distance
+
+def convert_geo_to_cartesian(points, origin_point):
+    """Converts geographic coordinates (lon, lat) to Cartesian coordinates (x, y) in meters."""
+    cartesian_points = []
+    origin_lon, origin_lat, _ = origin_point
+
+    for lon, lat, alt in points:
+        x = haversine(origin_lon, origin_lat, lon, origin_lat)
+        if lon < origin_lon:
+            x = -x
+
+        y = haversine(origin_lon, origin_lat, origin_lon, lat)
+        if lat < origin_lat:
+            y = -y
+            
+        cartesian_points.append([x, y, alt])
+        
+    return np.array(cartesian_points)
+
+def create_3d_model(csv_path):
+    """Creates a 3D mountain model from CSV data with custom coordinate system and inverted Y-axis."""
+    # 1. Read and parse data
+    try:
+        df = pd.read_csv(csv_path)
+    except FileNotFoundError:
+        print(f"Error: The file was not found at {csv_path}")
+        print("Please ensure 'S3 (3).csv' is located in the 'src/data' directory.")
+        return
+        
+    df['coords'] = df['WKT'].apply(parse_wkt_point)
+    df = df.dropna(subset=['coords'])
+    df['name'] = df['name'].astype(str)
+
+    # 2. Identify key points
+    try:
+        origin_geo = df[df['name'] == '0']['coords'].iloc[0]
+        px_geo = df[df['name'] == '-1']['coords'].iloc[0]
+        py_geo = df[df['name'] == '-2']['coords'].iloc[0]
+    except IndexError as e:
+        print(f"Error: Could not find one of the key points (0, -1, -2). {e}")
+        return
+
+    all_points_geo = np.array(df['coords'].tolist())
+
+    # 3. Coordinate System Transformation
+    temp_cartesian_points = convert_geo_to_cartesian(all_points_geo, origin_geo)
     
-    # Data storage for results
-    # We'll store the energy level of each node at each time step
-    all_nodes = wsn.get_all_nodes()
-    node_ids = [node.node_id for node in all_nodes]
-    num_steps = int(SimConfig.SIMULATION_TIME_S / SimConfig.TIME_STEP_S)
-    energy_history = {node_id: np.zeros(num_steps) for node_id in node_ids}
+    origin_cartesian_temp = convert_geo_to_cartesian([origin_geo], origin_geo)[0]
+    px_cartesian_temp = convert_geo_to_cartesian([px_geo], origin_geo)[0]
+    py_cartesian_temp = convert_geo_to_cartesian([py_geo], origin_geo)[0]
 
-    print("\nStarting simulation...")
+    x_axis = px_cartesian_temp[:2] - origin_cartesian_temp[:2]
+    x_axis = x_axis / np.linalg.norm(x_axis)
 
-    # Cross-cluster donation state
-    donation_state = {
-        'donor': None,      # ClusterHead acting as RF source
-        'receiver': None,   # ClusterHead to receive energy
-        'next_eval_step': 0
-    }
-    # Precompute baseline cluster energies
-    cluster_baselines = {}
-    for cluster in wsn.clusters:
-        baseline = (
-            # CH initial energy
-            1.0 * cluster.cluster_head.initial_energy +
-            # Sum of sensor initial energies (assume uniform config value)
-            len(cluster.sensor_nodes) * SensorNodeConfig.INITIAL_ENERGY_J
-        )
-        cluster_baselines[cluster.cluster_id] = max(baseline, 1e-9)
+    y_axis_initial = py_cartesian_temp[:2] - origin_cartesian_temp[:2]
+    y_axis = y_axis_initial - np.dot(y_axis_initial, x_axis) * x_axis
+    y_axis = y_axis / np.linalg.norm(y_axis)
 
-    # 2. Main simulation loop
-    for t_step in range(num_steps):
-        current_time = t_step * SimConfig.TIME_STEP_S
-        logger.log_step(t_step, current_time)
+    rotation_matrix = np.array([x_axis, y_axis])
 
-        # a. Optional: baseline scheduler for MRC only (RF target disabled in donation mode)
-        actions = scheduler.schedule_power_transfer(wsn)
-        rf_target_ch = None  # 禁用主站RF充电
-        mrc_transmitting_chs = actions['mrc_transmitters']
+    final_points = np.zeros_like(temp_cartesian_points)
+    final_points[:, :2] = np.dot(temp_cartesian_points[:, :2], rotation_matrix.T)
+    final_points[:, 2] = temp_cartesian_points[:, 2]
 
-        # Cross-cluster trigger evaluation
-        if SimConfig.ENABLE_CROSS_CLUSTER_DONATION and t_step >= donation_state['next_eval_step']:
-            # Compute cluster energy percentage
-            cluster_pct = {}
-            for cluster in wsn.clusters:
-                ch = cluster.cluster_head
-                total_e = ch.current_energy + sum(n.current_energy for n in cluster.sensor_nodes)
-                pct = total_e / cluster_baselines[cluster.cluster_id]
-                cluster_pct[cluster.cluster_id] = pct
-            # Select receiver (lowest pct below threshold)
-            receiver_cluster = min(wsn.clusters, key=lambda c: cluster_pct[c.cluster_id])
-            if cluster_pct[receiver_cluster.cluster_id] < SimConfig.TRIGGER_LOW_PCT:
-                # Select donors: exclude receiver; require high pct
-                donors = [c for c in wsn.clusters if c is not receiver_cluster and cluster_pct[c.cluster_id] > SimConfig.TRIGGER_HIGH_PCT]
-                # Score donors: p/distance to receiver CH
-                if donors:
-                    rx_ch = receiver_cluster.cluster_head
-                    def score(c):
-                        d = np.linalg.norm(c.cluster_head.position - rx_ch.position)
-                        d = max(d, 1.0)
-                        return cluster_pct[c.cluster_id] / d
-                    donor_cluster = max(donors, key=score)
-                    donation_state['donor'] = donor_cluster.cluster_head
-                    donation_state['receiver'] = receiver_cluster.cluster_head
-                else:
-                    donation_state['donor'] = None
-                    donation_state['receiver'] = None
-            else:
-                donation_state['donor'] = None
-                donation_state['receiver'] = None
-            donation_state['next_eval_step'] = t_step + SimConfig.CROSS_CLUSTER_TRIGGER_PERIOD_STEPS
+    # 4. Invert the Y-axis for upside-down view
+    final_points[:, 1] *= -1
 
-        # If we have an active donor/receiver pair, perform donation this step
-        best_path, max_power_w = [], 0.0
-        rf_sent_energy_j, rf_delivered_energy_j = None, 0.0
-        if donation_state['donor'] is not None and donation_state['receiver'] is not None:
-            donor_ch = donation_state['donor']
-            recv_ch = donation_state['receiver']
-            # If donor lacks energy for TX this step, skip
-            energy_needed = donor_ch.rf_tx_power_w * SimConfig.TIME_STEP_S
-            if donor_ch.current_energy >= energy_needed:
-                best_path, max_power_w = routing_algorithm.find_optimal_energy_path(wsn, donor_ch, recv_ch)
-                logger.log_routing(best_path, max_power_w)
-                rf_sent_energy_j = energy_needed
-                # Deduct donor energy (TX cost)
-                donor_ch.current_energy -= energy_needed
-                if max_power_w > 0:
-                    rf_delivered_energy_j = max_power_w * SimConfig.TIME_STEP_S
-                    recv_ch.receive_rf_power(max_power_w, SimConfig.TIME_STEP_S)
-            else:
-                # Not enough donor energy; skip this step
-                pass
+    # 5. Create mesh
+    points_2d = final_points[:, :2]
+    tri = Delaunay(points_2d)
+    mesh = pv.PolyData(final_points, faces=np.insert(tri.simplices, 0, 3, axis=1))
+    mesh['elevation'] = final_points[:, 2]
 
-        # e. Perform local MRC power transfer and collect per-CH send/deliver
-        # 排除 donor CH 避免同时MRC
-        mrc_entries = []
-        for ch in mrc_transmitting_chs:
-            if donation_state['donor'] is not None and ch is donation_state['donor']:
-                continue
-            # The CH transmits power to its own sensor nodes
-            target_nodes = [c.sensor_nodes for c in wsn.clusters if c.cluster_head == ch][0]
-            delivered_j, sent_j = ch.transmit_mrc_power(target_nodes, SimConfig.TIME_STEP_S, mrc_model)
-            mrc_entries.append({
-                'ch_id': ch.node_id,
-                'sent_j': sent_j,
-                'delivered_j': delivered_j,
-            })
+    # 6. Visualize and Save
+    warp_factor = 0.5
+    warped = mesh.warp_by_scalar('elevation', factor=warp_factor)
 
-        # d. Log energy flow (RF + MRC)
-        logger.log_scheduling({'rf_target': donation_state['receiver'], 'mrc_transmitters': mrc_transmitting_chs})
-        logger.log_routing(best_path, max_power_w)
-        logger.log_energy_transfer(donation_state['receiver'], rf_sent_energy_j, rf_delivered_energy_j, mrc_entries)
+    output_filename = 'mountain_model.obj'
+    warped.save(output_filename)
+    print(f"Model saved to {output_filename}")
 
-        # f. Per-node energy update (solar harvest + idle decay via update_energy)
-        current_time_min = (current_time % (24 * 3600)) / 60.0  # minutes in a day
-        for node in all_nodes:
-            # Respect global solar enable: disable harvesting when turned off
-            if hasattr(node, 'enable_energy_harvesting'):
-                node.enable_energy_harvesting = getattr(node, 'has_solar', False) and WSNConfig.ENABLE_SOLAR
-            node.update_energy(current_time_min)
+    plotter = pv.Plotter()
+    plotter.add_mesh(warped, show_edges=True, cmap='terrain')
+    plotter.show_axes()
+    plotter.add_text('Custom Coordinate System - Inverted Y', position='upper_left', font_size=18)
+    print("Displaying 3D model. Close the window to exit.")
+    plotter.show()
 
-        # g. Record energy levels for plotting
-        for i, node in enumerate(all_nodes):
-            energy_history[node.node_id][t_step] = node.current_energy
-            # Check if a node has died
-            if node.current_energy < SensorNodeConfig.MIN_ENERGY_J:
-                print(f"!!! Node {node.node_id} has died at {current_time}s !!!")
-                # For now, we just print. We could also stop the simulation.
-
-        # h. Log cluster energy status
-        logger.log_cluster_energy(wsn)
-
-        # i. Print progress
-        if (t_step + 1) % 100 == 0:
-            print(f"... Step {t_step + 1}/{num_steps} completed.")
-
-    print("Simulation finished.")
-    logger.close()
-    return energy_history, node_ids
-
-if __name__ == "__main__":
-    energy_data, node_ids = run_simulation()
-    
-    # Print final energy status
-    print("\n--- Final Energy Status ---")
-    for node_id in node_ids:
-        final_energy = energy_data[node_id][-1]
-        print(f"Node {node_id}: {final_energy:.4f} J")
-
-    # 4. Plot the results (if enabled)
-    if SimConfig.ENABLE_PLOT_RESULTS:
-        plot_energy_history(energy_data, node_ids)
-
+if __name__ == '__main__':
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Assuming 'data' is a subdirectory of the 'src' directory
+        csv_file_path = os.path.join(script_dir, 'data', 'S3 (3).csv')
+        create_3d_model(csv_file_path)
+    except NameError:
+        # Fallback for interactive environments where __file__ is not defined
+        print("Running in an interactive environment. Using relative path 'src/data/S3 (3).csv'.")
+        create_3d_model('src/data/S3 (3).csv')

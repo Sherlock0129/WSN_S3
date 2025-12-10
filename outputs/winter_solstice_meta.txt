@@ -1,0 +1,4 @@
+Center latitude (deg): 51.99512456941655
+Solar declination (deg): -23.44
+Solar noon altitude (deg): 14.565
+Azimuth at noon (deg from North, CW): 180.0

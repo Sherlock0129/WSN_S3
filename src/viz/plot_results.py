@@ -47,6 +47,20 @@ def plot_energy_history(energy_history, node_ids):
     output_path = os.path.join(project_root, "simulation_energy_results.png")
     plt.savefig(output_path, dpi=300)
     print(f"\n结果图已保存: {output_path}")
-    # 阻塞显示，避免窗口一闪而过（若在无图形环境可注释）
-    plt.show(block=True)
+
+    # 另存到论文图目录，便于直接 \includegraphics 引用
+    paper_fig_dir = os.path.join(project_root, "paper", "sections", "figures")
+    try:
+        os.makedirs(paper_fig_dir, exist_ok=True)
+        paper_fig_path = os.path.join(paper_fig_dir, "simulation_energy_results.png")
+        plt.savefig(paper_fig_path, dpi=300)
+        print(f"论文图另存: {paper_fig_path}")
+    except Exception as e:
+        print(f"论文图保存失败（可忽略）: {e}")
+
+    # 非交互环境下不显示窗口，直接关闭释放内存
+    try:
+        plt.close(fig)
+    except Exception:
+        pass
 

@@ -9,7 +9,7 @@ from src.core.SensorNode import SensorNode
 from src.config.simulation_config import WSNConfig, SensorNodeConfig
 
 class Cluster:
-    def __init__(self, cluster_id, center_position, has_solar_nodes: bool = False):
+    def __init__(self, cluster_id, center_position, has_solar_nodes: bool = False, nodes_count: int | None = None):
         """
         Initializes a single WSN cluster.
 
@@ -17,6 +17,7 @@ class Cluster:
             cluster_id (int): Unique ID for the cluster.
             center_position (np.array): 3D coordinates for the cluster's center.
             has_solar_nodes (bool): Whether sensor nodes in this cluster harvest solar energy.
+            nodes_count (int|None): Number of sensor nodes for this cluster. If None, use WSNConfig.NODES_PER_CLUSTER.
         """
         self.cluster_id = cluster_id
         self.center_position = center_position
@@ -27,7 +28,8 @@ class Cluster:
         
         # Create the sensor nodes within the cluster radius
         self.sensor_nodes = []
-        for i in range(WSNConfig.NODES_PER_CLUSTER):
+        n_nodes = nodes_count if nodes_count is not None else WSNConfig.NODES_PER_CLUSTER
+        for i in range(n_nodes):
             node_id = f"{cluster_id}-{i}"
             # Generate a random position within the cluster radius in 3D
             radius = WSNConfig.CLUSTER_RADIUS * np.sqrt(np.random.rand())
