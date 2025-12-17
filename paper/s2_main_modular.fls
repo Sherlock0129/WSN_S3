@@ -1,8 +1,8 @@
-PWD d:/University/WSN_S3/paper
+PWD d:/develop/Github-repos/WSN_S3/paper
 INPUT c:/texlive/2025/texmf.cnf
 INPUT c:/texlive/2025/texmf-dist/web2c/texmf.cnf
 INPUT c:/texlive/2025/texmf-var/web2c/pdftex/pdflatex.fmt
-INPUT d:/University/WSN_S3/paper/s2_main_modular.tex
+INPUT d:/develop/Github-repos/WSN_S3/paper/s2_main_modular.tex
 OUTPUT s2_main_modular.log
 INPUT c:/texlive/2025/texmf-dist/tex/latex/ieeetran/IEEEtran.cls
 INPUT c:/texlive/2025/texmf-dist/tex/latex/ieeetran/IEEEtran.cls
@@ -148,9 +148,15 @@ INPUT c:/texlive/2025/texmf-dist/tex/generic/bitset/bitset.sty
 INPUT c:/texlive/2025/texmf-dist/tex/generic/bitset/bitset.sty
 INPUT c:/texlive/2025/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty
 INPUT c:/texlive/2025/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty
+INPUT c:/texlive/2025/texmf-dist/tex/generic/atbegshi/atbegshi.sty
+INPUT c:/texlive/2025/texmf-dist/tex/latex/base/atbegshi-ltx.sty
+INPUT c:/texlive/2025/texmf-dist/tex/latex/base/atbegshi-ltx.sty
 INPUT c:/texlive/2025/texmf-dist/tex/latex/hyperref/hpdftex.def
 INPUT c:/texlive/2025/texmf-dist/tex/latex/hyperref/hpdftex.def
 INPUT c:/texlive/2025/texmf-dist/tex/latex/hyperref/hpdftex.def
+INPUT c:/texlive/2025/texmf-dist/tex/latex/atveryend/atveryend.sty
+INPUT c:/texlive/2025/texmf-dist/tex/latex/base/atveryend-ltx.sty
+INPUT c:/texlive/2025/texmf-dist/tex/latex/base/atveryend-ltx.sty
 INPUT c:/texlive/2025/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
 INPUT c:/texlive/2025/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
 INPUT c:/texlive/2025/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty
