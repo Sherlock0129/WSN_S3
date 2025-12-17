@@ -44,7 +44,7 @@ def plot_energy_history(energy_history, node_ids):
 
     ax.set_xlabel("Time (minutes)", fontsize=14)
     ax.set_ylabel("Energy (Joules)", fontsize=14)
-    ax.set_title("Node Energy Levels Over Time", fontsize=16)
+    # 移除大标题（按需可在此处恢复）
     ax.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0.)
     ax.grid(True)
     plt.tight_layout(rect=[0, 0, 0.85, 1])  # Adjust layout to make room for legend
@@ -87,6 +87,15 @@ def plot_energy_history_interactive(energy_history, node_ids, out_dir="sim"):
     num_steps = len(next(iter(energy_history.values())))
     t_min = _time_axis_minutes(num_steps)
 
+    # 可配置的放大倍数（默认3倍），用于放大图例、刻度及刻度文字大小
+    SCALE = getattr(SimConfig, 'PLOT_FONT_SCALE', 3.0)
+    TITLE_SIZE = int(16 * SCALE)
+    AXIS_TITLE_SIZE = int(14 * SCALE)
+    TICK_SIZE = int(12 * SCALE)
+    LEGEND_SIZE = int(12 * SCALE)
+    WIDTH = 1600
+    HEIGHT = 900
+
     ch_ids = [nid for nid in node_ids if 'CH' in str(nid)]
     sn_ids = [nid for nid in node_ids if 'CH' not in str(nid)]
 
@@ -109,12 +118,14 @@ def plot_energy_history_interactive(energy_history, node_ids, out_dir="sim"):
         fig_ch.add_trace(go.Scattergl(x=t_ds, y=y, mode='lines', name=str(nid),
                                       line=dict(width=2)))
     fig_ch.update_layout(
-        title='Cluster Heads Energy Over Time',
-        xaxis_title='Time (minutes)',
-        yaxis_title='Energy (J)',
         template='plotly_white',
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=LEGEND_SIZE)),
+        width=WIDTH,
+        height=HEIGHT,
+        margin=dict(l=int(60*SCALE), r=int(20*SCALE), b=int(60*SCALE), t=int(40*SCALE))
     )
+    fig_ch.update_xaxes(title_text='Time (minutes)', title_font=dict(size=AXIS_TITLE_SIZE), tickfont=dict(size=TICK_SIZE), automargin=True, tickwidth=1)
+    fig_ch.update_yaxes(title_text='Energy (J)', title_font=dict(size=AXIS_TITLE_SIZE), tickfont=dict(size=TICK_SIZE), automargin=True, ticks='outside', ticklen=int(8*SCALE), ticklabelposition='outside', tickwidth=1)
     ch_path = os.path.join(out_dir, 'energy_ch_only.html')
     fig_ch.write_html(ch_path, include_plotlyjs='cdn')
     print(f"交互图（簇头）: {ch_path}")
@@ -134,12 +145,14 @@ def plot_energy_history_interactive(energy_history, node_ids, out_dir="sim"):
                                       line=dict(width=1), opacity=0.6,
                                       legendgroup=f"C{cluster_of(nid)}"))
     fig_sn.update_layout(
-        title='Sensor Nodes Energy Over Time',
-        xaxis_title='Time (minutes)',
-        yaxis_title='Energy (J)',
         template='plotly_white',
-        showlegend=False  # legend for many nodes can be overwhelming
+        showlegend=False,
+        width=WIDTH,
+        height=HEIGHT,
+        margin=dict(l=int(60*SCALE), r=int(20*SCALE), b=int(60*SCALE), t=int(40*SCALE))
     )
+    fig_sn.update_xaxes(title_text='Time (minutes)', title_font=dict(size=AXIS_TITLE_SIZE), tickfont=dict(size=TICK_SIZE), automargin=True, tickwidth=1)
+    fig_sn.update_yaxes(title_text='Energy (J)', title_font=dict(size=AXIS_TITLE_SIZE), tickfont=dict(size=TICK_SIZE), automargin=True, ticks='outside', ticklen=int(8*SCALE), ticklabelposition='outside')
     sn_path = os.path.join(out_dir, 'energy_sensors_only.html')
     fig_sn.write_html(sn_path, include_plotlyjs='cdn')
     print(f"交互图（簇成员）: {sn_path}")
