@@ -1,7 +1,7 @@
 import re
 import numpy as np
 import pandas as pd
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, List
 
 from matplotlib.tri import Triangulation, LinearTriInterpolator
 from matplotlib.path import Path as MplPath
@@ -280,3 +280,86 @@ def build_dem_from_S3(
         'y_coords': yi,
         'points': np.column_stack([x, y, z]),
     }
+
+# ----------------------
+# Lake Area Calculation
+# ----------------------
+
+def get_lake_areas(s3_csv_path: str = 'data/S3.csv', lake_csv_path: str = 'data/LAKE.csv') -> Dict[str, float]:
+    """
+    Calculates the area of each lake defined in LAKE.csv in the local XY coordinate system.
+
+    Returns:
+        A dictionary mapping lake names (e.g., "lake1") to their areas in square meters.
+    """
+    try:
+        _, transform = build_transform_from_S3(s3_csv_path)
+        lake_df = pd.read_csv(lake_csv_path)
+    except FileNotFoundError as e:
+        print(f"[scenario_loader] Error loading files for area calculation: {e}")
+        return {}
+
+    areas = {}
+    for _, row in lake_df.iterrows():
+        name = row.get('name')
+        wkt = row.get('WKT', '')
+        if not name or not wkt:
+            continue
+
+        # Extract lon lat pairs from WKT string
+        lonlats = []
+        for tok in re.findall(r'(-?[\d\.]+\s+-?[\d\.]+)', wkt):
+            parts = tok.strip().split()
+            if len(parts) == 2:
+                lonlats.append((float(parts[0]), float(parts[1])))
+        
+        if len(lonlats) < 3:
+            continue
+
+        # Transform polygon to local XY and calculate area using Shoelace formula
+        poly_xy = np.array([transform(lon, lat, 0.0)[:2] for lon, lat in lonlats])
+        
+        x = poly_xy[:, 0]
+        y = poly_xy[:, 1]
+        area = 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
+        
+        areas[name] = area
+        
+    return areas
+
+# ----------------------
+# Load lakes with polygons & centroids
+# ----------------------
+
+def load_lakes(s3_csv_path: str = 'data/S3.csv', lake_csv_path: str = 'data/LAKE.csv') -> List[Dict[str, Any]]:
+    """Parse LAKE.csv, transform polygons to local XY, and return list of lakes:
+    [{name, poly_xy (Nx2), centroid (2,), area, path}]
+    """
+    _, transform = build_transform_from_S3(s3_csv_path)
+    lake_df = pd.read_csv(lake_csv_path)
+    lakes: List[Dict[str, Any]] = []
+    for _, row in lake_df.iterrows():
+        name = str(row.get('name', '')).strip()
+        wkt = row.get('WKT', '')
+        if not name or not wkt:
+            continue
+        # Extract lon lat pairs
+        lonlats = []
+        for tok in re.findall(r'(-?[\d\.]+\s+-?[\d\.]+)', wkt):
+            parts = tok.strip().split()
+            if len(parts) == 2:
+                lonlats.append((float(parts[0]), float(parts[1])))
+        if len(lonlats) < 3:
+            continue
+        poly_xy = np.array([transform(lon, lat, 0.0)[:2] for lon, lat in lonlats], dtype=float)
+        x = poly_xy[:, 0]; y = poly_xy[:, 1]
+        area = 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
+        centroid = np.array([np.mean(x), np.mean(y)], dtype=float)
+        lakes.append({
+            'name': name,
+            'poly_xy': poly_xy,
+            'centroid': centroid,
+            'area': float(area),
+            'path': MplPath(poly_xy)
+        })
+    return lakes

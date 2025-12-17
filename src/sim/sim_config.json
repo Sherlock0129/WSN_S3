@@ -1,5 +1,5 @@
 {
-  "days": 7,
+  "days": 10,
   "efficiency": {
     "model": "exp",
     "base": 0.6,

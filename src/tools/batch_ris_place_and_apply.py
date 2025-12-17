@@ -156,9 +156,12 @@ def main():
     env = wsn.environment
 
     # Requested pairs (cluster ids, 0-based) and sink pairs
-    pairs_cc: List[Tuple[int, int]] = [(0, 3), (3, 4), (4, 5), (1, 2), (2, 4), (4, 5)]
+    # 用户指定能量路径：RF1->RF4, RF2->RF3, RF3->RF5, RF4->RF5, RF5->RF6
+    # 映射到 0-based cluster_id: (0,3), (1,2), (2,4), (3,4), (4,5)
+    pairs_cc: List[Tuple[int, int]] = [(0, 3), (1, 2), (2, 4), (3, 4), (4, 5)]
     seen = set(); pairs_cc = [p for p in pairs_cc if not (p in seen or seen.add(p))]
-    pairs_sc: List[Tuple[str, int]] = [('sink', 1), ('sink', 1)]
+    # 也检查 RF1、RF2 到 sink：对应 cluster_id 0 和 1
+    pairs_sc: List[Tuple[str, int]] = [('sink', 0), ('sink', 1)]
     seen2 = set(); pairs_sc = [p for p in pairs_sc if not (p in seen2 or seen2.add(p))]
 
     # Parameters

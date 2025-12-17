@@ -5,7 +5,7 @@ This module decides which cluster head to charge via the RF-RIS system and
 which cluster heads should perform local MRC power transmission.
 """
 
-from src.config.simulation_config import ClusterHeadConfig, WSNConfig
+from src.config.simulation_config import ClusterHeadConfig, WSNConfig, SimConfig
 
 
 def schedule_power_transfer(wsn):
@@ -14,9 +14,10 @@ def schedule_power_transfer(wsn):
 
     Policy:
     1) Pick the cluster head with the lowest absolute energy as rf_target
-       (main loop may ignore RF charging but uses this to exclude CH from MRC).
-    2) Any cluster head with energy > 20% of its initial energy will perform
+       (main loop may ignore RF charging).
+    2) Any cluster head with energy > threshold (DOWNLINK_CH_MIN_PCT) will perform
        local MRC power transmission to its own sensor nodes (if enabled).
+       Note: rf_target is no longer excluded from MRC transmission.
 
     Args:
         wsn (WSN): The main WSN object.
@@ -45,13 +46,18 @@ def schedule_power_transfer(wsn):
     # 3) Select CHs for local MRC transmission (if enabled)
     mrc_transmitters = []
     if WSNConfig.ENABLE_MRC_LOCAL_TRANSFER:
-        # Trigger threshold: > 20% of initial capacity
-        mrc_threshold = ClusterHeadConfig.INITIAL_ENERGY_J * 0.2
+        # Trigger threshold from config: only stop when CH energy < DOWNLINK_CH_MIN_PCT
+        pct = max(0.0, min(1.0, getattr(SimConfig, 'DOWNLINK_CH_MIN_PCT', 0.10)))
+        mrc_threshold = ClusterHeadConfig.INITIAL_ENERGY_J * pct
         for cluster in wsn.clusters:
             ch = cluster.cluster_head
-            # Avoid the rf_target doing MRC in the same step
-            if ch is rf_target:
+            # 按阴/阳面与方向控制簇内下行（CH->成员）
+            is_solar = getattr(cluster, 'has_solar_nodes', False)
+            if is_solar and not getattr(SimConfig, 'ENABLE_DOWNLINK_SOLAR', True):
                 continue
+            if (not is_solar) and not getattr(SimConfig, 'ENABLE_DOWNLINK_NON_SOLAR', True):
+                continue
+            # 只有当簇头能量高于阈值才参与下发
             if ch.current_energy > mrc_threshold:
                 mrc_transmitters.append(ch)
 

@@ -6,7 +6,7 @@ import numpy as np
 
 from src.core.ClusterHead import ClusterHead
 from src.core.SensorNode import SensorNode
-from src.config.simulation_config import WSNConfig, SensorNodeConfig
+from src.config.simulation_config import WSNConfig, SensorNodeConfig, MRCConfig
 
 class Cluster:
     def __init__(self, cluster_id, center_position, has_solar_nodes: bool = False, nodes_count: int | None = None):
@@ -25,6 +25,15 @@ class Cluster:
         
         # Create the cluster head
         self.cluster_head = ClusterHead(node_id=f"CH_{cluster_id}", position=center_position)
+
+        # Mark whether this cluster enables intra-cluster RIS efficiency boost
+        try:
+            ris_clusters = set(getattr(WSNConfig, 'INTRA_CLUSTER_RIS_CLUSTERS', []))
+            self.intra_cluster_ris = (cluster_id in ris_clusters)
+        except Exception:
+            self.intra_cluster_ris = False
+        # Propagate flag to CH
+        setattr(self.cluster_head, 'intra_cluster_ris', self.intra_cluster_ris)
         
         # Create the sensor nodes within the cluster radius
         self.sensor_nodes = []
@@ -50,6 +59,8 @@ class Cluster:
                 high_threshold=0.9, # Example
                 has_solar=self.has_solar_nodes
             )
+            # Propagate flag to sensors
+            setattr(node, 'intra_cluster_ris', self.intra_cluster_ris)
             self.sensor_nodes.append(node)
             
     def __repr__(self):

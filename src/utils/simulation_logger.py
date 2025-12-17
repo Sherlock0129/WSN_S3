@@ -52,7 +52,7 @@ class SimulationLogger:
             log_str += "- **Result**: No viable energy path found or no power transferred.\n"
         self.log_buffer.append(log_str)
 
-    def log_energy_transfer(self, rf_target, rf_sent_energy_j, rf_delivered_energy_j, mrc_entries):
+    def log_energy_transfer(self, rf_target, rf_sent_energy_j, rf_delivered_energy_j, mrc_entries, sensor_tx_consumption=None):
         log_str = "### 3. Energy & Information Flow\n"
         log_str += "#### Energy Flow\n"
         any_energy = False
@@ -60,7 +60,7 @@ class SimulationLogger:
         if rf_target and (rf_sent_energy_j is not None):
             eta_rf = (rf_delivered_energy_j / rf_sent_energy_j) if rf_sent_energy_j > 0 else 0.0
             log_str += (
-                f"- RF_TX -> `{rf_target.node_id}`: Sent `{rf_sent_energy_j:.6f}` J, "
+                f"- RF/CH -> `{rf_target.node_id}`: Sent `{rf_sent_energy_j:.6f}` J, "
                 f"Delivered `{rf_delivered_energy_j:.6f}` J, Efficiency `{eta_rf:.6e}`.\n"
             )
             any_energy = True
@@ -77,6 +77,12 @@ class SimulationLogger:
                     f"Delivered `{delivered_j:.6f}` J, Efficiency `{eta:.6e}`.\n"
                 )
                 any_energy = True
+
+        # Hourly sensor reporting consumption
+        if sensor_tx_consumption:
+            total = sum(sensor_tx_consumption.values())
+            log_str += f"- Sensor hourly reports total consumption: `{total:.6f}` J (num={len(sensor_tx_consumption)})\n"
+            any_energy = True
         
         if not any_energy:
             log_str += "- No energy transfer in this step.\n"

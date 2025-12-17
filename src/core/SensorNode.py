@@ -15,12 +15,12 @@ class SensorNode:
                  position: list,
                  has_solar: bool = True,
                  # 电池参数
-                 capacity: float = 3.5,
-                 voltage: float = 3.7,
+                 capacity: float = 40.0,
+                 voltage: float = 3.0,
                  # 太阳能参数
                  enable_energy_harvesting: bool = True,
                  solar_efficiency: float = 0.18,
-                 solar_area: float = 0.001,
+                 solar_area: float = 0.1,
                  max_solar_irradiance: float = 800.0,
                  env_correction_factor: float = 0.6,
                  # 传输参数
@@ -77,13 +77,30 @@ class SensorNode:
         self.V = voltage  # Voltage (V)
         self.energy_history = []  # To track energy consumption and generation over time
         self.current_energy = initial_energy
+        # Max storable energy (J). Default from config; acts as battery cap to trigger forwarding.
+        try:
+            from src.config.simulation_config import SensorNodeConfig
+            self.max_energy_j = getattr(SensorNodeConfig, 'MAX_ENERGY_J', self.capacity * self.V * 3600)
+        except Exception:
+            self.max_energy_j = self.capacity * self.V * 3600
 
         # Solar panel parameters (if the node has a solar panel)
         self.enable_energy_harvesting = enable_energy_harvesting
-        self.solar_efficiency = solar_efficiency
-        self.solar_area = solar_area  # Area of a solar panel in m^2
-        self.G_max = max_solar_irradiance  # Max solar irradiance in W/m^2
-        self.env_correction_factor = env_correction_factor  # Environmental factor for solar collection
+        # Prefer centralized config values when available
+        try:
+            self.solar_efficiency = getattr(SensorNodeConfig, 'SOLAR_EFFICIENCY', solar_efficiency)
+            self.solar_area = getattr(SensorNodeConfig, 'SOLAR_PANEL_AREA_M2', solar_area)  # m^2
+            self.G_max = getattr(SensorNodeConfig, 'SOLAR_MAX_IRRADIANCE_W_M2', max_solar_irradiance)  # W/m^2
+            self.env_correction_factor = getattr(SensorNodeConfig, 'SOLAR_ENV_CORRECTION', env_correction_factor)
+            self.solar_day_start_min = getattr(SensorNodeConfig, 'SOLAR_DAY_START_MIN', 360)
+            self.solar_day_end_min = getattr(SensorNodeConfig, 'SOLAR_DAY_END_MIN', 1080)
+        except Exception:
+            self.solar_efficiency = solar_efficiency
+            self.solar_area = solar_area  # m^2
+            self.G_max = max_solar_irradiance  # W/m^2
+            self.env_correction_factor = env_correction_factor
+            self.solar_day_start_min = 360
+            self.solar_day_end_min = 1080
 
         # Wireless Energy Transfer (WET) parameters
         self.E_char = energy_char  # Energy consumed for charging during WET (J)
@@ -116,7 +133,7 @@ class SensorNode:
 
         # 在 __init__ 里：
         self.position_history = [tuple(self.position)]
-        
+
         # 如果是物理中心节点，打印特殊信息
         if self.is_physical_center:
             print(f"[SensorNode] 创建物理中心节点 ID={self.node_id}, "
@@ -275,7 +292,9 @@ class SensorNode:
         E_decay = self.energy_decay()
 
         self.current_energy = self.current_energy + E_gen - E_decay
-        self.current_energy = max(0, min(self.current_energy, self.capacity * self.V * 3600))
+        # Clamp by configured max energy capacity
+        cap = getattr(self, 'max_energy_j', self.capacity * self.V * 3600)
+        self.current_energy = max(0.0, min(self.current_energy, cap))
 
         self.energy_history.append({"time": t, "generated": E_gen, "consumed": E_decay})
         return E_gen, E_decay

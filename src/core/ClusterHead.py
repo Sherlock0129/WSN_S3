@@ -29,6 +29,9 @@ class ClusterHead(SensorNode):
             has_solar=False # As per proposal, we rely on WPT
         )
 
+        # Set max energy cap for CH battery
+        self.max_energy_j = getattr(ClusterHeadConfig, 'MAX_ENERGY_J', self.initial_energy)
+
         # RF receiver properties for long-range energy harvesting
         self.rf_rx_gain_dbi = ClusterHeadConfig.RF_RX_GAIN_DBI
 
