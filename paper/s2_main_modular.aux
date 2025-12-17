@@ -96,25 +96,45 @@
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-B}0d}实现与参数来源。}{11}{paragraph.5.2.0.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}对比方法与消融设置}{11}{subsection.5.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}评价指标}{11}{subsection.5.4}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces 节点能量随时间变化（单次运行示例）。图示若干节点的SOC/能量轨迹，验证端到端调度与供能的稳定性。}}{11}{figure.12}\protected@file@percent }
-\newlabel{fig:exp_energy_time}{{12}{11}{节点能量随时间变化（单次运行示例）。图示若干节点的SOC/能量轨迹，验证端到端调度与供能的稳定性。}{figure.12}{}}
+\newlabel{subsec:metrics}{{\mbox  {V-D}}{11}{评价指标}{subsection.5.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-E}}实验流程与统计}{11}{subsection.5.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-F}}结果概览}{11}{subsection.5.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-F}0a}主要发现。}{11}{paragraph.5.6.0.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-F}0b}一致性与可复现性。}{12}{paragraph.5.6.0.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {VI}讨论}{12}{section.6}\protected@file@percent }
-\newlabel{sec:discussion}{{VI}{12}{讨论}{section.6}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0a}关键发现的综合解读}{12}{paragraph.6.0.0.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0b}设计启示与工程建议}{12}{paragraph.6.0.0.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0c}复杂度、可部署性与实现路径}{12}{paragraph.6.0.0.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0d}局限性与威胁}{12}{paragraph.6.0.0.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0e}适用范围与外推性}{12}{paragraph.6.0.0.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0f}未来工作}{12}{paragraph.6.0.0.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-F}0a}主要发现（概览）。}{11}{paragraph.5.6.0.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-F}0b}一致性与可复现性。}{11}{paragraph.5.6.0.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-G}}分层结果与图像分析（最终）}{11}{subsection.5.7}\protected@file@percent }
+\newlabel{subsec:final_visual_results}{{\mbox  {V-G}}{11}{分层结果与图像分析（最终）}{subsection.5.7}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-G}1}向阳面簇头（CH0/CH1）：RIS对发射端不敏感}{11}{figure.12}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces 向阳面簇头能量随时间：CH0/CH1 的大尺度轨迹几乎重合，呈周期性“平台—骤降—恢复”的锯齿形态。RIS 开/关对发射端的能量轨迹影响可忽略，因其主要改变送达端的可达性而非源侧发射功。}}{12}{figure.12}\protected@file@percent }
+\newlabel{fig:ch01-global}{{12}{12}{向阳面簇头能量随时间：CH0/CH1 的大尺度轨迹几乎重合，呈周期性“平台—骤降—恢复”的锯齿形态。RIS 开/关对发射端的能量轨迹影响可忽略，因其主要改变送达端的可达性而非源侧发射功。}{figure.12}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-G}2}阴面簇头（CH2--CH5）：RIS 的决定性作用}{12}{figure.14}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces 向阳面簇头能量放大图（约 39--41.5k min 区间）：可分辨“控制/上报的窄脉冲下探”和“批量能量下发的较大阶跃”。CH0（蓝）与 CH1（红）在抖动频次上略有差异，对应时隙错位与控制开销差异。}}{12}{figure.13}\protected@file@percent }
+\newlabel{fig:ch01-zoom}{{13}{12}{向阳面簇头能量放大图（约 39--41.5k min 区间）：可分辨“控制/上报的窄脉冲下探”和“批量能量下发的较大阶跃”。CH0（蓝）与 CH1（红）在抖动频次上略有差异，对应时隙错位与控制开销差异。}{figure.13}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces 阴面簇头（有 RIS）：轨迹呈“缓降+周期性回充”，所有簇全程存活。簇规模与斜率相关：CH3（最小簇，红）最缓，CH5（最大簇，紫）次之；CH4（绿）谷值更深、波动更大。}}{12}{figure.14}\protected@file@percent }
+\newlabel{fig:ch2-5-ris}{{14}{12}{阴面簇头（有 RIS）：轨迹呈“缓降+周期性回充”，所有簇全程存活。簇规模与斜率相关：CH3（最小簇，红）最缓，CH5（最大簇，紫）次之；CH4（绿）谷值更深、波动更大。}{figure.14}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces 阴面簇头（无 RIS）：能量近线性快速衰减并先后枯竭。存活顺序与簇规模一致：CH4 最先，CH2/CH5 随后，CH3 最晚。几乎无“回充阶跃”，说明下发难以送达。}}{13}{figure.15}\protected@file@percent }
+\newlabel{fig:ch2-5-noris}{{15}{13}{阴面簇头（无 RIS）：能量近线性快速衰减并先后枯竭。存活顺序与簇规模一致：CH4 最先，CH2/CH5 随后，CH3 最晚。几乎无“回充阶跃”，说明下发难以送达。}{figure.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {16}{\ignorespaces 传感器（有 RIS）：多数节点缓降并伴随周期性“上跳”。少量向阳面传感器近似高位稳定（采能占优）。阶跃在约 40k/80k/120k min 同步出现，反映簇头\,$\to $\,簇内的再分配/补能广播。}}{13}{figure.16}\protected@file@percent }
+\newlabel{fig:sensors-ris}{{16}{13}{传感器（有 RIS）：多数节点缓降并伴随周期性“上跳”。少量向阳面传感器近似高位稳定（采能占优）。阶跃在约 40k/80k/120k min 同步出现，反映簇头\,$\to $\,簇内的再分配/补能广播。}{figure.16}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-G}3}簇内传感器能量：均衡化效应}{13}{figure.17}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {17}{\ignorespaces 传感器（无 RIS）：能量普遍单调下降，“上跳”稀少且幅度小；阴面远端节点下降更快、簇内差异随时间扩大。}}{13}{figure.17}\protected@file@percent }
+\newlabel{fig:sensors-noris}{{17}{13}{传感器（无 RIS）：能量普遍单调下降，“上跳”稀少且幅度小；阴面远端节点下降更快、簇内差异随时间扩大。}{figure.17}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-G}4}跨层汇总与闭环机理}{13}{figure.18}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-G}5}小结与建议}{13}{subsubsection.5.7.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VI}讨论}{13}{section.6}\protected@file@percent }
+\newlabel{sec:discussion}{{VI}{13}{讨论}{section.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {18}{\ignorespaces 跨层汇总对比（橙：有 RIS；蓝：无 RIS）。顶：全网总能量；中：簇头总能量；底：传感器总能量。三层一致显示出稳定的能量间隙，且在时间上缓慢扩大。增益主要体现在簇头层，传感器层呈次级收益。}}{14}{figure.18}\protected@file@percent }
+\newlabel{fig:ris-boost-all}{{18}{14}{跨层汇总对比（橙：有 RIS；蓝：无 RIS）。顶：全网总能量；中：簇头总能量；底：传感器总能量。三层一致显示出稳定的能量间隙，且在时间上缓慢扩大。增益主要体现在簇头层，传感器层呈次级收益。}{figure.18}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0a}关键发现的综合解读}{14}{paragraph.6.0.0.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0b}设计启示与工程建议}{15}{paragraph.6.0.0.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0c}复杂度、可部署性与实现路径}{15}{paragraph.6.0.0.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0d}局限性与威胁}{15}{paragraph.6.0.0.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0e}适用范围与外推性}{15}{paragraph.6.0.0.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0f}未来工作}{15}{paragraph.6.0.0.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VII}结论}{15}{section.7}\protected@file@percent }
+\newlabel{sec:conclusion}{{VII}{15}{结论}{section.7}{}}
 \bibcite{ref:eetor}{1}
-\@writefile{toc}{\contentsline {section}{\numberline {VII}结论}{13}{section.7}\protected@file@percent }
-\newlabel{sec:conclusion}{{VII}{13}{结论}{section.7}{}}
-\@writefile{toc}{\contentsline {section}{参考文献}{13}{section*.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{Biographies}{13}{IEEEbiography.0}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{作者姓名}{13}{IEEEbiography.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{合作者姓名}{13}{IEEEbiography.2}\protected@file@percent }
-\gdef \@abspage@last{13}
+\@writefile{toc}{\contentsline {section}{参考文献}{16}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{Biographies}{16}{IEEEbiography.0}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{作者姓名}{16}{IEEEbiography.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{合作者姓名}{16}{IEEEbiography.2}\protected@file@percent }
+\gdef \@abspage@last{16}

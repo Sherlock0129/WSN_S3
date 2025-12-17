@@ -41,7 +41,7 @@
 - 错位鲁棒性：平移$\delta r$、倾角$\delta\theta$的分布强度（小/中/大扰动）；
 - 控制与反馈：RIS更新周期（小时/日）、状态摘要开销、反馈丢包率。
 
-\subsection{评价指标}
+\subsection{评价指标}\label{subsec:metrics}
 - 寿命：首节点失效时间（FND）、50%节点失效时间（HND）；
 - 能量短缺：帧级不可达率/短缺率（缺电导致任务跳过）；
 - 能量均衡：SOC变异系数（CV）与CH能量缓冲区溢出/枯竭次数；
@@ -57,44 +57,96 @@
 - 统计：跨不同随机种子与天气型（日照档位）重复，报告均值、标准差与95%置信区间。
 
 \subsection{结果概览}
-% 图~\ref{fig:exp_global} 展示了在Carrauntoohil地形上的多RIS几何连通示例与接收功率热力图；图~\ref{fig:exp_local} 展示了簇内RIS透镜对MRC效率—错位曲线的抬升与展宽；图~\ref{fig:exp_end2end} 汇总端到端能量流与寿命指标的对比。
+% 旧版示意图省略，以下给出按“全局—局部—跨层”的最终图像化结果与详细分析。
 
-% \begin{figure}[!t]
-%   \centering
-%   \includegraphics[width=.98\linewidth]{ris_rf_sink_map.png}
-%   \vspace{-0.5em}
-%   \caption{全局层多RIS几何连通与机会路径示例：在走廊与视域约束内，单/双/多跳链路显著抬升背阴侧可达接收功率，提升能量可达率。}
-%   \label{fig:exp_global}
-% \end{figure}
-
-% \begin{figure}[!t]
-%   \centering
-%   \includegraphics[width=.86\linewidth]{mrc.png}
-%   \vspace{-0.5em}
-%   \caption{簇内RIS能量透镜示意与效率趋势：在平移/倾斜错位下，RIS透镜提升MRC效率并扩大“有效补能体积”（等效率轮廓外扩）。}
-%   \label{fig:exp_local}
-% \end{figure}
-
-% \begin{figure}[!t]
-%   \centering
-%   \includegraphics[width=.98\linewidth]{simulation_energy_results.png}
-%   \vspace{-0.5em}
-%   \caption{端到端指标对比（示例）：与Baseline-0/1/2相比，Ours-GLC在能量短缺率、SOC均衡与寿命（FND/HND）上取得一致改进；控制比特与计算额外开销保持在可接受范围内。}
-%   \label{fig:exp_end2end}
-% \end{figure}
-
-\begin{figure}[!t]
-  \centering
-  \includegraphics[width=.98\linewidth]{simulation_energy_results9false.png}
-  \vspace{-0.5em}
-  \caption{节点能量随时间变化（单次运行示例）。图示若干节点的SOC/能量轨迹，验证端到端调度与供能的稳定性。}
-  \label{fig:exp_energy_time}
-\end{figure}
-
-\paragraph{主要发现。}
+\paragraph{主要发现（概览）。}
 - 全局（G）：在NLoS越岭场景，多RIS链路相对“无RIS直达”显著抬升CH侧接收功率，双/三跳对复杂地形尤为有效；安装高与走廊半宽存在最佳区间。
 - 局部（L）：RIS透镜对中/大错位下的MRC效率提升显著，等效“补能体积”扩大，降低了对机械精度与定位误差的敏感度。
 - 跨层（C）：在G+L基础上加入帧级联合调度后，能量短缺率进一步下降，SOC分布更均衡，首节点与中位数寿命提升；增益对相位量化与更新速率不敏感（$b\ge2$足够）。
-- 代价与扩展：在相同控制预算下，优先增加RIS数量与安装高往往比提高量化比特更“划算”；方法对新增簇/面板与UAV-RIS具备可扩展性（见附录扩展实验）。
 
 \paragraph{一致性与可复现性。} 配置A用于与第3章假设完全对齐（无RF能量源，RIS仅簇内）；配置B验证第4章提出的多RIS能量路由扩展。两者共享同一实现与统计流程，避免混杂变量。完整参数、随机种子与脚本入口在补充材料与仓库附表中给出，可一键复现实验与绘图。
+
+\subsection{分层结果与图像分析（最终）}
+\label{subsec:final_visual_results}
+
+\subsubsection{向阳面簇头（CH0/CH1）：RIS对发射端不敏感}
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=.98\linewidth]{figures/experiments/energy_ch_only_ch0,1.png}
+  \vspace{-0.5em}
+  \caption{向阳面簇头能量随时间：CH0/CH1 的大尺度轨迹几乎重合，呈周期性“平台—骤降—恢复”的锯齿形态。RIS 开/关对发射端的能量轨迹影响可忽略，因其主要改变送达端的可达性而非源侧发射功。}
+  \label{fig:ch01-global}
+\end{figure}
+\noindent\textbf{现象.} CH0 与 CH1 的能量曲线在全时段几乎重合，围绕约 $\sim$430~J 高位运行，叠加周期性大尺度起伏（与昼夜采能同步）与若干明显的瞬时“阶跃式下降”。\par
+\noindent\textbf{机制解释.} 依据第~\ref{sec:mechanism} 节的跨层能量调度，向阳面簇头兼具“采能源”和“能量下发端”两种角色：
+(i) 白天受光照$\Xi$驱动形成高位平台；(ii) 当阴面簇能量低于门限$L$时，触发批量能量下发，导致源侧出现阶跃式能量损失；(iii) RIS 的存在与否不会改变\emph{发射端}消耗模型（发射功率、时隙长度、批量由策略决定），因此 CH0/CH1 的轨迹对 RIS 不敏感。\par
+\noindent\textbf{结论.} \emph{RIS 影响“是否送达”而非“是否发出”}。图~\ref{fig:ch01-global} 中多次明显的“深降”即为跨簇能量下发事件的时域刻画，可作为调度门限与批量配置的外在证据。
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=.98\linewidth]{figures/experiments/energy_ch_only_ch0,1(2).png}
+  \vspace{-0.5em}
+  \caption{向阳面簇头能量放大图（约 39--41.5k min 区间）：可分辨“控制/上报的窄脉冲下探”和“批量能量下发的较大阶跃”。CH0（蓝）与 CH1（红）在抖动频次上略有差异，对应时隙错位与控制开销差异。}
+  \label{fig:ch01-zoom}
+\end{figure}
+\noindent\textbf{细节观察.} 在图~\ref{fig:ch01-zoom} 中，细小下探密集出现，叠加少量深度更大的阶跃：(a) 窄脉冲对应控制信令、簇内同步与短包上报的离散能耗；(b) 大阶跃对应一次批量跨簇能量下发。两簇头存在轻微时序错位，造成 CH0 抖动次数略高。\par
+\noindent\textbf{方法学建议.} 针对源侧可报告以下量化：单次下发成本$\Delta E_{\text{src}}$（峰-谷差）、下发频率$f_{\text{disp}}$、单位时间平均下发功率$P_{\text{src}}$，用于反校准门限$L$与批量设置（见 \S\ref{subsec:metrics}）。
+
+\subsubsection{阴面簇头（CH2--CH5）：RIS 的决定性作用}
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=.98\linewidth]{figures/experiments/energy_ch_only_ch2,3,4,5_with_ris.png}
+  \vspace{-0.5em}
+  \caption{阴面簇头（有 RIS）：轨迹呈“缓降+周期性回充”，所有簇全程存活。簇规模与斜率相关：CH3（最小簇，红）最缓，CH5（最大簇，紫）次之；CH4（绿）谷值更深、波动更大。}
+  \label{fig:ch2-5-ris}
+\end{figure}
+\noindent\textbf{有 RIS（图~\ref{fig:ch2-5-ris}）.} 多处“谷后阶跃上升”表征成功接收跨簇下发。斜率差由两类因素叠加：
+(a) \emph{负载差异}：CH3 为最小簇，聚合与下行负荷最小，单位时间能耗最低；(b) \emph{几何/链路差异}：若 CH4 的“源$\to$RIS$\to$CH4”几何更不利，则即便有 RIS，仍更易短时亏损并需要更频繁补能。\par
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=.98\linewidth]{figures/experiments/energy_ch_only_ch2,3,4,5_without_ris.png}
+  \vspace{-0.5em}
+  \caption{阴面簇头（无 RIS）：能量近线性快速衰减并先后枯竭。存活顺序与簇规模一致：CH4 最先，CH2/CH5 随后，CH3 最晚。几乎无“回充阶跃”，说明下发难以送达。}
+  \label{fig:ch2-5-noris}
+\end{figure}
+\noindent\textbf{无 RIS（图~\ref{fig:ch2-5-noris}）.} 阴面簇头几乎“单调耗尽”，期间罕见有效回充。RIS 缺失导致路径损耗与几何遮挡无法被补偿，跨簇下发多为无效传输。\par
+\noindent\textbf{对照结论.} RIS 将阴面簇头的能量形态从“单调递减”转变为“带回充的缓降”，显著延长生存期；簇规模决定基础斜率，几何劣势（以 CH4 为代表）需要在调度上给予更高优先级或更低门限。
+
+\subsubsection{簇内传感器能量：均衡化效应}
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=.98\linewidth]{figures/experiments/energy_sensors_only_with_ris.png}
+  \vspace{-0.5em}
+  \caption{传感器（有 RIS）：多数节点缓降并伴随周期性“上跳”。少量向阳面传感器近似高位稳定（采能占优）。阶跃在约 40k/80k/120k min 同步出现，反映簇头\,$\to$\,簇内的再分配/补能广播。}
+  \label{fig:sensors-ris}
+\end{figure}
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=.98\linewidth]{figures/experiments/energy_sensors_only_without_ris.png}
+  \vspace{-0.5em}
+  \caption{传感器（无 RIS）：能量普遍单调下降，“上跳”稀少且幅度小；阴面远端节点下降更快、簇内差异随时间扩大。}
+  \label{fig:sensors-noris}
+\end{figure}
+\noindent\textbf{解释与结论.} 有 RIS 时，簇头接收端的成功率提升，进一步通过簇内再分配抹平能量差异；无 RIS 时，补能难以覆盖远端，造成“能量不均”累积并诱发早死节点。建议将均衡性指标（Jain 指数或方差时均值）作为簇内评价核心。
+
+\subsubsection{跨层汇总与闭环机理}
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=.98\linewidth]{figures/experiments/ris_boost_comparison.png}
+  \vspace{-0.5em}
+  \caption{跨层汇总对比（橙：有 RIS；蓝：无 RIS）。顶：全网总能量；中：簇头总能量；底：传感器总能量。三层一致显示出稳定的能量间隙，且在时间上缓慢扩大。增益主要体现在簇头层，传感器层呈次级收益。}
+  \label{fig:ris-boost-all}
+\end{figure*}
+\noindent\textbf{观察.} 图~\ref{fig:ris-boost-all} 的三层曲线均显示橙色始终高于蓝色：
+(i) 顶图表明全网能量差随时间累积；(ii) 中图提升幅度最大，验证“RIS 主要改善源$\to$阴面簇头链路”；(iii) 底图提升温和但稳定，反映簇内均衡效应。\par
+\noindent\textbf{闭环解释.} 当阴面簇能量低于门限$L$，源侧批量下发；RIS 保证送达；簇内再分配将补能扩散至成员节点——形成“门限触发—定向反射—簇内扩散”的能量闭环。\par
+\noindent\textbf{策略含义.} 对几何不利簇（如 CH4）应配置更低门限或更高优先级；在相同控制预算下，优先提升 RIS 数量/布局与安装高通常比增加量化比特更有效。
+
+\subsubsection{小结与建议}
+- \textbf{源侧不敏感性：} CH0/CH1 对 RIS 几乎不敏感，深降即为下发事件的外在标记；
+- \textbf{阴面决定性：} 有 RIS 时阴面簇头“缓降+回充”、无 RIS 时快速枯竭；
+- \textbf{簇规模与几何：} CH3（最小簇）最耐久，CH5 次之；CH4 受几何劣势影响最脆弱，建议提高补能优先级；
+- \textbf{簇内均衡：} RIS 通过提高簇头接收成功率，带动簇内能量均衡化；
+- \textbf{跨层累积增益：} 全网总能量差随时间累积，主要由簇头层的增益驱动。
+
+% 备注：若需加入定量表格，可基于上述曲线计算 AUC、FDN/LDN、Boost% 等，并置于文末附表。
