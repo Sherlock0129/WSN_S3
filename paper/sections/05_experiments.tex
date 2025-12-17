@@ -54,18 +54,22 @@
 - 初始化：基于DEM生成走廊与候选集，计算视域与LoS图；根据扰动强度采样簇内几何错位；
 - 逐日仿真：按日轨迹推进，记录$\Xi(x,y,t)$，执行C（若启用）给出的帧级调度与RIS更新；
 - 能量流：在G启用时，按$\pi(t)$选择的多RIS链路路由能量；在L启用时，按$\mathcal{F}_{\text{RIS}}$修正MRC效率；
-- 统计：跨不同随机种子与天气型（日照档位）重复，报告均值、标准差与95%置信区间。
+- 统计：跨不同随机种子与天气型（日照档位）重复，报告均值、标准差与95\%置信区间。
 
 \subsection{结果概览}
 % 图~\ref{fig:exp_global} 展示了在Carrauntoohil地形上的多RIS几何连通示例与接收功率热力图；图~\ref{fig:exp_local} 展示了簇内RIS透镜对MRC效率—错位曲线的抬升与展宽；图~\ref{fig:exp_end2end} 汇总端到端能量流与寿命指标的对比。
 
-% \begin{figure}[!t]
-%   \centering
-%   \includegraphics[width=.98\linewidth]{ris_rf_sink_map.png}
-%   \vspace{-0.5em}
-%   \caption{全局层多RIS几何连通与机会路径示例：在走廊与视域约束内，单/双/多跳链路显著抬升背阴侧可达接收功率，提升能量可达率。}
-%   \label{fig:exp_global}
-% \end{figure}
+% 全局层：源$\to$CH的接收功率剖面（有/无RIS）
+\begin{figure}[!t]
+  \centering
+  % 上：CH0$\to$CH3 路径（0--3链路）
+  \includegraphics[width=.98\linewidth]{sections/figures/ris_cs_ch0_ch3.png}\\[-0.3em]
+  % 下：CH1$\to$CH2 路径（1--2链路）
+  \includegraphics[width=.98\linewidth]{sections/figures/ris_cs_ch1_ch2.png}
+  \vspace{-0.5em}
+  \caption{全局层多RIS路径在典型走廊上的接收功率剖面（红虚线：无RIS直达；绿实线：经RIS反射）。上图为CH0$\to$CH3（路径0--3），可以看到在越岭点附近，无RIS直达在首个遮挡处迅速跌落到$\approx-100$\,dBm后“消失”，而多跳RIS链路在RIS1/RIS2附近保持$\approx-30\sim-40$\,dBm的可用功率；下图为CH1$\to$CH2（路径1--2），在中段走廊内同样表现出多RIS双跳对背阴侧簇头的显著增益，验证Q1中“多RIS几何机会路径显著抬升源$\to$CH接收功率”的结论。}
+  \label{fig:exp_global_cs}
+\end{figure}
 
 % \begin{figure}[!t]
 %   \centering

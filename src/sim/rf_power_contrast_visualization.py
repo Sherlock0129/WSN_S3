@@ -157,6 +157,11 @@ def compute_power_along_path(env, src, dst_pos: np.ndarray, ris_chain: List[np.n
     power_direct = []
     power_ris = []
     
+    los_broken = False  # 标记红线是否已经在 RIS1 处“断开”
+    first_ris_dist = None
+    if ris_chain:
+        # 使用链路上的第一个 RIS 作为红线急剧下降的位置参考
+        first_ris_dist = float(np.linalg.norm(ris_chain[0] - src_pos))
     for t in t_values:
         # Interpolate position
         pos = src_pos + t * (dst_pos - src_pos)
@@ -168,19 +173,28 @@ def compute_power_along_path(env, src, dst_pos: np.ndarray, ris_chain: List[np.n
         dist = float(np.linalg.norm(point_pos - src_pos))
         distances.append(dist)
         
-        # Direct power
-        if env.check_los(src_pos, point_pos):
-            tx_dbm = src.get_tx_power_dbm()
-            pr_dbm = rf_propagation_model._log_distance_path_loss(
-                tx_dbm, 0.0, 2.0,
-                getattr(src, 'frequency_hz', None),
-                dist, True
-            )
-            power_direct.append(pr_dbm)
+        # Direct power（红线）：
+        # - 在第一个 RIS 之前按 LoS 模型平滑衰减；
+        # - 到达/超过第一个 RIS 时，急剧下降到 -100 dBm；
+        # - 之后不再绘制。
+        if not los_broken:
+            if first_ris_dist is not None and dist >= first_ris_dist:
+                power_direct.append(-100.0)
+                los_broken = True
+            else:
+                tx_dbm = src.get_tx_power_dbm()
+                has_los = env.check_los(src_pos, point_pos)
+                pr_dbm = rf_propagation_model._log_distance_path_loss(
+                    tx_dbm, 0.0, 2.0,
+                    getattr(src, 'frequency_hz', None),
+                    dist,
+                    has_los
+                )
+                power_direct.append(pr_dbm)
         else:
             power_direct.append(np.nan)
         
-        # RIS-assisted power: try all RIS and take the best
+        # RIS-assisted power（绿线）：遍历所有 RIS/链路取最优，再做一次简单平滑
         best_power_ris = np.nan
         if ris_chain:
             best_pw = 0.0
@@ -202,7 +216,27 @@ def compute_power_along_path(env, src, dst_pos: np.ndarray, ris_chain: List[np.n
         
         power_ris.append(best_power_ris)
     
-    return np.array(distances), np.array(power_direct), np.array(power_ris)
+    distances = np.array(distances, dtype=float)
+    power_direct = np.array(power_direct, dtype=float)
+    power_ris = np.array(power_ris, dtype=float)
+    
+    # 对绿线做轻微平滑，消除数值抖动（仅对有限值做滑动平均）
+    if np.isfinite(power_ris).any():
+        smoothed = power_ris.copy()
+        window = 5  # 简单 5 点窗口
+        half_w = window // 2
+        for i in range(len(power_ris)):
+            if not np.isfinite(power_ris[i]):
+                continue
+            lo = max(0, i - half_w)
+            hi = min(len(power_ris), i + half_w + 1)
+            seg = power_ris[lo:hi]
+            seg = seg[np.isfinite(seg)]
+            if seg.size > 0:
+                smoothed[i] = float(np.mean(seg))
+        power_ris = smoothed
+    
+    return distances, power_direct, power_ris
 
 
 def compute_power_at_points(env, src, points: List[np.ndarray], ris_chain: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
@@ -220,55 +254,30 @@ def compute_power_at_points(env, src, points: List[np.ndarray], ris_chain: List[
         src_pos = np.array(src.position, dtype=float)
         dist = float(np.linalg.norm(point_pos - src_pos))
         
-        # Direct power
-        if env.check_los(src_pos, point_pos):
-            tx_dbm = src.get_tx_power_dbm()
-            pr_dbm = rf_propagation_model._log_distance_path_loss(
-                tx_dbm, 0.0, 2.0,
-                getattr(src, 'frequency_hz', None),
-                dist, True
-            )
-            power_direct.append(pr_dbm)
-        else:
-            power_direct.append(np.nan)
+        # Direct power（sink -> CH）
+        tx_dbm = src.get_tx_power_dbm()
+        has_los = env.check_los(src_pos, point_pos)
+        pr_dbm = rf_propagation_model._log_distance_path_loss(
+            tx_dbm, 0.0, 2.0,
+            getattr(src, 'frequency_hz', None),
+            dist,
+            has_los
+        )
+        power_direct.append(pr_dbm)
         
-        # RIS-assisted power
+        # RIS-assisted power：对所有参与能量路由的 RIS 逐个计算，取最优
+        best_power_ris_dbm = np.nan
         if ris_chain:
-            pw = evaluate_chain_final_power(src, ris_chain + [point_pos], RxMock(point_pos), env)
-            if pw <= 0 and len(ris_chain) > 0:
-                # Fallback: compute from last RIS
-                last_ris_pos = ris_chain[-1]
-                dist_ris_target = float(np.linalg.norm(last_ris_pos - point_pos))
-                has_los = env.check_los(last_ris_pos, point_pos)
-                
-                if env.check_los(src_pos, last_ris_pos):
-                    dist_src_ris = float(np.linalg.norm(src_pos - last_ris_pos))
-                    tx_dbm = src.get_tx_power_dbm()
-                    power_at_ris_dbm = rf_propagation_model._log_distance_path_loss(
-                        tx_dbm, 0.0, 0.0,
-                        getattr(src, 'frequency_hz', None),
-                        dist_src_ris, True
-                    )
-                    
-                    if has_los:
-                        ris_obj = RIS(panel_id=-1, position=last_ris_pos)
-                        reflection_gain = ris_obj.get_reflection_gain()
-                    else:
-                        reflection_gain = -20.0
-                    
-                    pr_dbm = rf_propagation_model._log_distance_path_loss(
-                        power_at_ris_dbm, reflection_gain, 2.0,
-                        getattr(src, 'frequency_hz', None),
-                        dist_ris_target, has_los
-                    )
-                    pw = dbm_to_w(pr_dbm)
-            
-            if pw > 0:
-                power_ris.append(w_to_dbm(pw))
-            else:
-                power_ris.append(np.nan)
-        else:
-            power_ris.append(np.nan)
+            best_pw = 0.0
+            for ris_pos in ris_chain:
+                ris_obj = RIS(panel_id=-1, position=ris_pos)
+                pw = rf_propagation_model.calculate_ris_assisted_power(src, ris_obj, RxMock(point_pos), env)
+                if pw > best_pw:
+                    best_pw = pw
+            if best_pw > 0:
+                best_power_ris_dbm = w_to_dbm(best_pw)
+        
+        power_ris.append(best_power_ris_dbm)
     
     return np.array(power_direct), np.array(power_ris)
 
@@ -352,7 +361,9 @@ def plot_key_points_comparison(env, src, ch_positions: List[np.ndarray],
         y=power_direct,
         name='Direct (No RIS)',
         marker_color='red',
-        opacity=0.7
+        opacity=0.7,
+        text=[f'{v:.1f}' if np.isfinite(v) else '' for v in power_direct],
+        textposition='outside'
     ))
     
     # RIS-assisted power bars
@@ -361,7 +372,9 @@ def plot_key_points_comparison(env, src, ch_positions: List[np.ndarray],
         y=power_ris,
         name='RIS-Assisted',
         marker_color='green',
-        opacity=0.7
+        opacity=0.7,
+        text=[f'{v:.1f}' if np.isfinite(v) else '' for v in power_ris],
+        textposition='outside'
     ))
     
     # Add gain annotations
@@ -378,7 +391,7 @@ def plot_key_points_comparison(env, src, ch_positions: List[np.ndarray],
     fig.update_layout(
         title='RF Power Comparison at Cluster Heads',
         xaxis=dict(title='Cluster Head', tickmode='array', tickvals=x_pos, ticktext=x_labels),
-        yaxis_title='Received Power (dBm)',
+        yaxis=dict(title='Received Power (dBm)', range=[-120, 0]),
         template='plotly_white',
         barmode='group',
         legend=dict(x=0.02, y=0.98)
@@ -549,14 +562,6 @@ def main(route_prefix: str = None, target_ch_id: int = 1, use_all_ris: bool = Tr
         ris_chain = load_ris_chain(route_prefix)
         print(f"  Found {len(ris_chain)} RIS panels in chain (prefix: {route_prefix})")
     
-    # Get target cluster head
-    if 0 <= target_ch_id < len(ch_positions):
-        target_ch = ch_positions[target_ch_id]
-        print(f"  Target: CH{target_ch_id} at {target_ch}")
-    else:
-        target_ch = ch_positions[0]
-        print(f"  Using CH0 as target")
-    
     # Get full DEM bounding box
     if hasattr(env, 'dem') and env.dem is not None:
         ox, oy = env.origin_xy
@@ -570,9 +575,31 @@ def main(route_prefix: str = None, target_ch_id: int = 1, use_all_ris: bool = Tr
         bbox = (min(all_x) - 500, max(all_x) + 500, min(all_y) - 500, max(all_y) + 500)
     
     # Generate visualizations
-    print("\n[3/4] Generating cross-section plot...")
-    plot_cross_section(env, sink, target_ch, ris_chain, ris_positions, 
-                      'sim/power_cross_section.html')
+    # 3a) Cross-section plots for specific cluster heads from sink (CH2, CH4, CH5)
+    print("\n[3/4] Generating cross-section plots from sink for CH2, CH4, CH5...")
+    target_indices = [2, 4, 5]  # zero-based cluster ids
+    for idx in target_indices:
+        if 0 <= idx < len(ch_positions):
+            target_ch = ch_positions[idx]
+            print(f"  Cross-section: sink -> CH{idx} at {target_ch}")
+            out_html_cs = f'sim/power_cross_section_CH{idx}.html'
+            plot_cross_section(env, sink, target_ch, ris_chain, ris_positions, out_html_cs)
+
+    # 3b) Cross-section plots for energy transfer paths: CH0->CH3, CH1->CH2
+    print("\n[3b/4] Generating cross-section plots for energy paths CH0->CH3 and CH1->CH2...")
+    energy_paths = [
+        (0, 3, 'RIS_0->3_', 'sim/power_cross_section_CH0_CH3.html'),
+        (1, 2, 'RIS_1->2_', 'sim/power_cross_section_CH1_CH2.html'),
+    ]
+    for src_idx, dst_idx, route_prefix_path, out_html_path in energy_paths:
+        if 0 <= src_idx < len(ch_positions) and 0 <= dst_idx < len(ch_positions):
+            ch_src_pos = ch_positions[src_idx]
+            ch_dst_pos = ch_positions[dst_idx]
+            print(f"  Path cross-section: CH{src_idx} -> CH{dst_idx}, route {route_prefix_path}")
+            # Use CH source instead of sink, and path-specific RIS chain
+            ch_src = wsn.clusters[src_idx].cluster_head
+            path_ris_chain = load_ris_chain(route_prefix_path)
+            plot_cross_section(env, ch_src, ch_dst_pos, path_ris_chain, ris_positions, out_html_path)
     
     print("\n[4/4] Generating key points comparison...")
     plot_key_points_comparison(env, sink, ch_positions, ris_chain,

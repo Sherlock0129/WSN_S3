@@ -76,26 +76,25 @@ def calculate_ris_assisted_power(source, ris, target, env):
     """
     # 1. Path from source to RIS
     dist_source_ris = np.linalg.norm(source.position - ris.position)
-    if not env.check_los(source.position, ris.position):
-        return 0.0
+    los_source_ris = env.check_los(source.position, ris.position)
 
     # Power received at the RIS (as if it were an isotropic antenna)
     tx_power_dbm = source.get_tx_power_dbm() if hasattr(source, 'get_tx_power_dbm') else 10 * np.log10(source.power_w * 1000)
     source_gain = source.antenna_gain_dbi if hasattr(source, 'antenna_gain_dbi') else source.get_reflection_gain()
 
+    # 即使非视距也不直接归零，而是通过 NLoS 路径损耗模型给予强衰减
     power_at_ris_dbm = _log_distance_path_loss(
         tx_power_dbm, 
         source_gain, 
-        0, # Isotropic antenna gain for RIS element
+        0,  # Isotropic antenna gain for RIS element
         source.frequency_hz,
         dist_source_ris,
-        True  # RIS 反射要求 LoS，前面已检查
+        los_source_ris
     )
 
     # 2. Path from RIS to target
     dist_ris_target = np.linalg.norm(ris.position - target.position)
-    if not env.check_los(ris.position, target.position):
-        return 0.0
+    los_ris_target = env.check_los(ris.position, target.position)
 
     # The RIS now acts as a transmitter with a certain gain
     ris.configure_phases(source.position, target.position)
@@ -110,7 +109,7 @@ def calculate_ris_assisted_power(source, ris, target, env):
         rx_gain, 
         source.frequency_hz, 
         dist_ris_target,
-        True  # RIS 反射要求 LoS，前面已检查
+        los_ris_target
     )
 
     # Convert dBm to Watts

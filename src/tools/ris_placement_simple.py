@@ -303,45 +303,42 @@ def _select_top_candidates(env, XI, YI, mask, endpoint: np.ndarray, other: np.nd
 # ------------------------------
 
 def evaluate_chain_final_power(ch_src, chain_positions: List[np.ndarray], ch_dst, env) -> float:
-    """评估 A→R1→R2→...→Rm→B 的最终到达功率（W）。要求相邻段 LoS。"""
+    """评估 A→R1→R2→...→Rm→B 的最终到达功率（W）。
+    与旧版不同：相邻段若为 NLoS 不再直接返回 0，而是按 NLoS 路径损耗强衰减。
+    这样在可视化中，非视距段会“陡降到 -100 dBm 一带”，而不是直接消失。
+    """
     if not chain_positions:
-        return 0.0
-    # 检查相邻 LoS
-    prev_pos = np.array(ch_src.position, dtype=float)
-    for pos in chain_positions:
-        if not env.check_los(prev_pos, pos):
-            return 0.0
-        prev_pos = pos
-    if not env.check_los(chain_positions[-1], np.array(ch_dst.position, dtype=float)):
         return 0.0
 
     source_obj = ch_src
     # 若只有1个 RIS，最后一跳在下面处理
     for i in range(len(chain_positions) - 1):
-        ris_i = RIS(panel_id=-(i+1), position=chain_positions[i])
-        ris_next = RIS(panel_id=-(i+2), position=chain_positions[i+1])
+        ris_i = RIS(panel_id=-(i + 1), position=chain_positions[i])
+        ris_next = RIS(panel_id=-(i + 2), position=chain_positions[i + 1])
         p_next = rf_propagation_model.calculate_ris_assisted_power(source_obj, ris_i, ris_next, env)
         if p_next <= 0:
+            # 仍然允许继续，但若整条链路几乎无功率，则后面也会很弱
             return 0.0
         # ris_next 作为新的源，功率为 p_next
         src2 = type('RISSource', (), {})
-        src2.position = chain_positions[i+1]
+        src2.position = chain_positions[i + 1]
         src2.get_tx_power_dbm = (lambda p=p_next: 10 * np.log10(p * 1000.0))
         src2.get_reflection_gain = ris_next.get_reflection_gain
         src2.frequency_hz = getattr(ch_src, 'frequency_hz', None)
         source_obj = src2
 
-    # 最后一跳：RIS_m -> B
+    # 最后一跳：RIS_m -> B（同样允许 NLoS，通过 _log_distance_path_loss 处理）
     last_ris = RIS(panel_id=-999, position=chain_positions[-1])
     dist = float(np.linalg.norm(chain_positions[-1] - np.array(ch_dst.position, dtype=float)))
     freq = getattr(ch_src, 'frequency_hz', None)
+    los_last = env.check_los(chain_positions[-1], np.array(ch_dst.position, dtype=float))
     final_dbm = rf_propagation_model._log_distance_path_loss(
         source_obj.get_tx_power_dbm(),
         last_ris.get_reflection_gain(),
         ch_dst.rf_rx_gain_dbi,
         freq,
         dist,
-        True,
+        los_last,
     )
     return 10 ** ((final_dbm - 30) / 10)
 

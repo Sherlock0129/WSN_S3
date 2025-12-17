@@ -190,7 +190,7 @@ class ClusterHeadConfig:
 # ==============================================================================
 class SimConfig:
     # 功能开关
-    ENABLE_ROUTING = True          # 是否进行能量路由（直射/RIS）
+    ENABLE_ROUTING = False          # 是否进行能量路由（直射/RIS）
     ENABLE_SCHEDULER = True         # 是否启用调度器选择充电对象
     ENABLE_LOGGING = True           # 是否打印仿真过程日志
     ENABLE_PLOT_RESULTS = True      # 绘制30天能量变化图
